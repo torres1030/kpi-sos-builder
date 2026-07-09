@@ -1,0 +1,3267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Strengths & Opportunities Report Builder</title>
+
+<!-- Fonts: Montserrat (Gotham Bold substitute) + JetBrains Mono for metadata -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<!-- Libraries: ExcelJS for parsing, jsPDF for vector PDF generation -->
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  :root {
+    /* Pharr brand palette */
+    --ink:        #0d1d41;     /* Pharr navy */
+    --ink-2:      #142a47;
+    --ink-3:      #25416A;
+    --gold:       #f3c300;     /* Pharr gold */
+    --gold-soft:  #FBEFAB;
+    --paper:      #F6F1E7;     /* warm cream */
+    --paper-2:    #EDE6D6;
+    --line:       #D9CFB8;
+    --accent:     #f3c300;     /* primary actions use gold */
+    --accent-2:   #d9ad00;
+    --accent-ink: #0d1d41;     /* text on gold */
+
+    --green:      #2E7D4F;
+    --green-soft: #D9EBDB;
+    --yellow:     #B88600;
+    --yellow-soft:#F4E6B8;
+    --red:        #A8291C;
+    --red-soft:   #F2D2CC;
+    --gray:       #6B6255;
+    --gray-soft:  #E4DFD1;
+
+    --shadow: 0 1px 2px rgba(13,29,65,.06), 0 4px 12px rgba(13,29,65,.06);
+    --shadow-strong: 0 4px 24px rgba(13,29,65,.12);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Montserrat', system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- HEADER ---------- */
+  header.app-header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 28px 40px 24px;
+    border-bottom: 4px solid var(--accent);
+  }
+  header .brand {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  header .title {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    font-size: 38px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin: 0;
+  }
+  header .title em {
+    font-style: italic;
+    color: #F4E6B8;
+    font-weight: 400;
+  }
+  header .sub {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(246, 241, 231, 0.7);
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  header .meta {
+    text-align: right;
+    font-size: 11px;
+    color: rgba(246, 241, 231, 0.65);
+    letter-spacing: 0.06em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  header .meta .dept {
+    color: var(--paper);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    margin-top: 4px;
+  }
+
+  /* ---------- LAYOUT ---------- */
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 40px 80px;
+  }
+
+  /* ---------- RESTORE BANNER (shown when there's a saved session) ---------- */
+  .restore-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    background: #FFFBED;
+    border: 1px solid var(--gold);
+    border-left: 4px solid var(--gold);
+    border-radius: 3px;
+    margin-bottom: 16px;
+  }
+  .restore-banner-title {
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .restore-banner-meta {
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .restore-banner-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Subtle "Auto-saved" status text next to the toolbar buttons */
+  .saved-indicator {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
+    min-width: 130px;
+    text-align: right;
+  }
+
+  /* Brief auto-dismissing notification (e.g. "Restored 5 previous selections for HR") */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: all 0.25s ease;
+    pointer-events: none;
+    z-index: 1000;
+    max-width: 80vw;
+  }
+  .toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ---------- FOLDER SYNC (File System Access API) ---------- */
+  .folder-sync {
+    margin-top: 16px;
+    padding: 20px 24px;
+    background: #F7F9FC;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--gold);
+    border-radius: 3px;
+  }
+  .folder-sync-fresh {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .folder-sync-hint {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: var(--ink-3);
+    line-height: 1.5;
+    max-width: 620px;
+  }
+  .folder-sync-saved {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .folder-sync-info {
+    font-size: 13px;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .folder-sync-info strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .folder-sync-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .folder-icon {
+    display: inline-block;
+    margin-right: 4px;
+  }
+  .btn.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* ---------- UPLOAD ZONE ---------- */
+  .upload-zone {
+    border: 2px dashed var(--line);
+    border-radius: 4px;
+    padding: 64px 24px;
+    text-align: center;
+    background: #FBF8F0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .upload-zone:hover, .upload-zone.dragging {
+    border-color: var(--accent);
+    background: #FDFAF2;
+  }
+  .upload-zone h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    font-size: 26px;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+  .upload-zone p {
+    margin: 0;
+    color: var(--ink-3);
+    font-size: 14px;
+  }
+  .upload-zone .icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+  .upload-zone input[type="file"] { display: none; }
+
+  /* ---------- TOOLBAR ---------- */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    padding: 20px 0 24px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .toolbar-left {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .summary-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+  .chip .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .chip.green { background: var(--green-soft); color: var(--green); }
+  .chip.green .dot { background: var(--green); }
+  .chip.yellow { background: var(--yellow-soft); color: var(--yellow); }
+  .chip.yellow .dot { background: var(--yellow); }
+  .chip.red { background: var(--red-soft); color: var(--red); }
+  .chip.red .dot { background: var(--red); }
+  .chip.gray { background: var(--gray-soft); color: var(--gray); }
+  .chip.gray .dot { background: var(--gray); }
+  .chip.selected { background: var(--ink); color: var(--paper); }
+  .chip.selected .dot { background: var(--accent); }
+
+  /* ---------- FILTERS ---------- */
+  .filters {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .filter-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-right: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--ink-3);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .filter-btn:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .filter-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  /* ---------- BUTTONS ---------- */
+  .btn {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .btn-primary:hover {
+    background: var(--accent-2);
+  }
+  .btn-primary:disabled {
+    background: var(--gray);
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-secondary:hover {
+    border-color: var(--ink);
+  }
+
+  /* ---------- EXPORT DROPDOWN ---------- */
+  .export-wrap {
+    position: relative;
+  }
+  .export-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 260px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    box-shadow: var(--shadow-strong);
+    z-index: 100;
+    display: none;
+    overflow: hidden;
+  }
+  .export-menu.open { display: block; }
+  .export-option {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 12px 16px;
+    text-align: left;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    border-bottom: 1px solid var(--paper-2);
+  }
+  .export-option:last-child { border-bottom: none; }
+  .export-option:hover { background: var(--paper); }
+  .export-option-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .export-option-sub {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+
+  /* ---------- DEPARTMENT SUMMARY STRIP ---------- */
+  .dept-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background: #FBF8F0;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+  .dept-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    background: white;
+    border-left: 3px solid var(--ink);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .dept-card:hover {
+    box-shadow: var(--shadow);
+  }
+  .dept-card-name {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .dept-card-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-3);
+    letter-spacing: 0.05em;
+  }
+  .dept-card-chips {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .dept-mini-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  .dept-mini-chip.green { background: var(--green-soft); color: var(--green); }
+  .dept-mini-chip.yellow { background: var(--yellow-soft); color: var(--yellow); }
+  .dept-mini-chip.red { background: var(--red-soft); color: var(--red); }
+  .dept-mini-chip.gray { background: var(--gray-soft); color: var(--gray); }
+  .dept-mini-chip.strengths { background: var(--green-soft); color: var(--green); }
+  .dept-mini-chip.opportunities { background: var(--red-soft); color: var(--red); }
+
+  /* Sheet-level live counters (next to each sheet's name in the triage list) */
+  .sheet-counts {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .sheet-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+  .sheet-chip.strengths { background: var(--green-soft); color: var(--green); }
+  .sheet-chip.opportunities { background: var(--red-soft); color: var(--red); }
+  .dept-remove {
+    background: transparent;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+    align-self: flex-end;
+    margin-top: -6px;
+    margin-bottom: -4px;
+    line-height: 1;
+  }
+  .dept-remove:hover { color: var(--red); }
+
+  /* ---------- REPORT SETTINGS ---------- */
+  .report-settings {
+    background: #FBF8F0;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    border-radius: 3px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .report-settings-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .report-settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+  }
+  .rs-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .rs-field-wide { grid-column: 1 / -1; }
+  .rs-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3);
+    letter-spacing: 0.02em;
+  }
+  .rs-hint {
+    font-weight: 400;
+    color: var(--gray);
+    font-size: 10px;
+  }
+  .rs-input, .rs-textarea {
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 6px 10px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: white;
+  }
+  .rs-input:focus, .rs-textarea:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
+  .rs-textarea {
+    resize: vertical;
+    min-height: 50px;
+    line-height: 1.5;
+  }
+
+  /* ---------- REPORT SETTINGS ---------- END */
+
+  /* ---------- DEPARTMENT HEADER (in main list) ---------- */
+  .dept-section {
+    margin-bottom: 56px;
+  }
+  .dept-section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 12px 20px;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 3px 3px 0 0;
+    margin-bottom: 20px;
+  }
+  .dept-section-header h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .dept-section-header .file-tag {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: rgba(246, 241, 231, 0.6);
+    letter-spacing: 0.05em;
+  }
+
+  /* ---------- SHEET GROUPS ---------- */
+  .sheet-group {
+    margin-bottom: 48px;
+  }
+  .sheet-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .sheet-header h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    font-size: 26px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .sheet-header .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ---------- KPI CARDS ---------- */
+  .kpi-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .kpi {
+    display: grid;
+    grid-template-columns: 30px 90px 1fr 140px 120px 80px;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 14px 18px;
+    background: #FBF8F0;
+    border: 1px solid var(--line);
+    border-left-width: 4px;
+    border-radius: 2px;
+    transition: all 0.15s ease;
+  }
+  .kpi:hover {
+    background: #FFFDF7;
+    box-shadow: var(--shadow);
+  }
+  .kpi.selected {
+    background: #FFFBED;
+    border-color: var(--accent);
+  }
+  .kpi.green { border-left-color: var(--green); }
+  .kpi.yellow { border-left-color: var(--yellow); }
+  .kpi.red { border-left-color: var(--red); }
+  .kpi.gray { border-left-color: var(--gray); }
+
+  .kpi-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 2px;
+  }
+  .kpi-check input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .kpi-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+  }
+  .status-badge.green { background: var(--green); color: white; }
+  .status-badge.yellow { background: var(--yellow); color: white; }
+  .status-badge.red { background: var(--red); color: white; }
+  .status-badge.gray { background: var(--gray); color: white; }
+
+  /* Clickable status badge — cycle through G/Y/R/Gray on click.
+     Override state is conveyed via tooltip only (no visible mark, per user pref). */
+  .status-badge-btn {
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .status-badge-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+  }
+
+  .link-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    border-radius: 2px;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .link-badge.empty {
+    background: transparent;
+    color: var(--gray);
+    border: 1px dashed var(--line);
+  }
+
+  .kpi-main {
+    min-width: 0;
+  }
+  .kpi-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 0 0 2px;
+    line-height: 1.35;
+  }
+  .kpi-meta {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+  .kpi-meta .sep { opacity: 0.4; margin: 0 6px; }
+
+  .star {
+    font-size: 14px;
+    color: var(--accent);
+    margin-left: 6px;
+    display: inline-block;
+    transform: translateY(-1px);
+  }
+
+  .kpi-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+  .kpi-value-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .kpi-target {
+    font-size: 12px;
+    color: var(--ink-3);
+    line-height: 1.3;
+  }
+  .kpi-target-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 2px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .kpi-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+  }
+  .comment-toggle {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .comment-toggle:hover { border-color: var(--ink); color: var(--ink); }
+  .comment-toggle.has-comment {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .comment-row {
+    grid-column: 1 / -1;
+    padding-top: 10px;
+    margin-top: 10px;
+    border-top: 1px dashed var(--line);
+    display: none;
+  }
+  .comment-row.open { display: block; }
+  .comment-row textarea {
+    width: 100%;
+    min-height: 60px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 8px 10px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    background: white;
+    resize: vertical;
+  }
+  .comment-row textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* ---------- EMPTY ---------- */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-3);
+    font-style: italic;
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 900px) {
+    .kpi {
+      grid-template-columns: 30px 1fr;
+      gap: 10px;
+    }
+    .kpi-badges, .kpi-value, .kpi-target, .kpi-actions {
+      grid-column: 2;
+    }
+    header, main { padding-left: 20px; padding-right: 20px; }
+  }
+
+  /* ---------- PDF PREVIEW (hidden during build) ---------- */
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand">
+    <div>
+      <h1 class="title">KPI SOs <em>Studio</em></h1>
+      <div class="sub">Strengths &amp; Opportunities Report Builder</div>
+    </div>
+    <div class="meta">
+      <div>Office of Strategic Excellence</div>
+      <div class="dept" id="dept-name">— No file loaded —</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- UPLOAD ZONE -->
+  <div id="restore-banner" class="restore-banner" style="display: none;">
+    <div class="restore-banner-text">
+      <div class="restore-banner-title">Resume previous session?</div>
+      <div class="restore-banner-meta" id="restore-banner-meta"></div>
+    </div>
+    <div class="restore-banner-actions">
+      <button class="btn btn-secondary" id="btn-discard-saved">Discard</button>
+      <button class="btn btn-primary" id="btn-restore-saved">Resume</button>
+    </div>
+  </div>
+  <div id="upload-zone" class="upload-zone">
+    <div class="icon">⬆</div>
+    <h2>Drop KPI workbooks here</h2>
+    <p>or click to browse — one file or many, all processed in your browser</p>
+    <input type="file" id="file-input" accept=".xlsx" multiple />
+  </div>
+
+  <!-- FOLDER SYNC (hidden if browser doesn't support File System Access API) -->
+  <div id="folder-sync" class="folder-sync" style="display: none;">
+    <div id="folder-sync-fresh" class="folder-sync-fresh">
+      <button class="btn btn-secondary" id="btn-pick-folder">
+        <span class="folder-icon">📁</span> Load from folder…
+      </button>
+      <p class="folder-sync-hint">
+        Point at your OneDrive KPI folder once. Every time after that, one click
+        pulls in all department .xlsx files — no downloading, no dragging.
+      </p>
+    </div>
+    <div id="folder-sync-saved" class="folder-sync-saved" style="display: none;">
+      <div class="folder-sync-info">
+        <span class="folder-icon">📁</span>
+        Synced folder: <strong id="synced-folder-name"></strong>
+      </div>
+      <div class="folder-sync-actions">
+        <button class="btn btn-primary" id="btn-refresh-folder">
+          <span>🔄</span> Load from folder
+        </button>
+        <button class="btn btn-secondary btn-small" id="btn-change-folder">Change folder</button>
+        <button class="btn btn-secondary btn-small" id="btn-forget-folder">Forget</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP (hidden until file loaded) -->
+  <div id="app" style="display: none;">
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="summary-chips" id="summary-chips"></div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span class="saved-indicator" id="saved-indicator"></span>
+        <button class="btn btn-secondary" id="btn-refresh-folder-app" style="display: none;">🔄 Reload folder</button>
+        <button class="btn btn-secondary" id="btn-add-more">+ Add Files</button>
+        <button class="btn btn-secondary" id="btn-reset">Start Over</button>
+        <div class="export-wrap">
+          <button class="btn btn-primary" id="btn-export">Export PDF ▾</button>
+          <div class="export-menu" id="export-menu">
+            <button class="export-option" data-mode="combined">
+              <div class="export-option-title">Combined snapshot</div>
+              <div class="export-option-sub">One PDF with all departments</div>
+            </button>
+            <button class="export-option" data-mode="separate">
+              <div class="export-option-title">Separate snapshots</div>
+              <div class="export-option-sub">One PDF per department</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Department summary strip (batch mode only) -->
+    <div id="dept-summary" class="dept-summary" style="display: none;"></div>
+
+    <div class="filters">
+      <span class="filter-label">Filter</span>
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="selected">Selected</button>
+      <button class="filter-btn" data-filter="actionable">Actionable</button>
+      <button class="filter-btn" data-filter="red">Red</button>
+      <button class="filter-btn" data-filter="yellow">Yellow</button>
+      <button class="filter-btn" data-filter="green">Green</button>
+      <button class="filter-btn" data-filter="strategic">With Strategic Link</button>
+    </div>
+
+    <div id="sheets-container"></div>
+  </div>
+</main>
+
+<!-- Hidden PDF build container -->
+<!-- (Vector PDF is built directly via jsPDF — no offscreen preview needed) -->
+
+<script>
+/* ============================================================
+   BRAND ASSETS (City of Pharr)
+   Embedded as base64 data URIs so the file is fully self-contained
+   and works offline / behind restrictive corporate networks.
+   ============================================================ */
+const PHARR_SEAL_DATA = 'data:image/jpeg;base64,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';
+const TEAM_PHARR_DATA = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCACfAZADASIAAhEBAxEB/8QAHgAAAwACAgMBAAAAAAAAAAAAAAgJBgcEBQECAwr/xABsEAAABAQCAggNDAwLBAYLAAABAgMEAAUGBxESCCEJExQiMUGT0hUYGTJRUlVWYWJxcpUWIzM4Qld1gYKisdMXJDQ2N1ORkpSys7RDRGNzdHZ3g5ajwyUmodQoWLXR4uQnNUVGR0hUhIXCxP/EABwBAAEFAQEBAAAAAAAAAAAAAAADBAUGBwgCAf/EAEIRAAEDAQMEDwUHBAMBAAAAAAEAAgMEBQYREiExkQcTFhciQVFSU3GBkqHB0RQyYbHSFTM0NXKCsjZC4fAjQ1Si/9oADAMBAAIRAxEAPwBpUUU9rJvC8BeKPptZOwH5IEfYieaEdfUhhTp6aHIIlMDVQwGL7neDHEMbNtkaxba52S3KXYiBQDHKEAFAQxyhE19Carp5NtIORtns6mD5uZu7MZFy6Ocg+sn9yJozSv8ASFuHKdK5SlWdTroU/wCqFoz3CVFLLtJzpgYmbJjrxHjjUqrY/q4q51BDMCWx7YScRmxww486qcN4oXwCofGRi7J5fRPplDDrQgAodqEIFsiM6mMrujTibN+6ZkNJimEqCwkKY23K9rDc6OjhR1YqhVVlDKqnlLcx1FBzCI5PdGiv2ldl9nWRTWq6TES8WGjTx459HIpGmtQVNbLSZGGTxrYmQO1CFYuNpz05byuZ1TbmkHz5xK3Bm5101kygcwe6LiWGoiR2k7q0gq8+FFYsOx5YFDeCulhr2YgNxGcjPiORR147Qns6nY+A4EnyTT9UbpXvHmPLpc2DqjdK948x5dLmwhPxQfFG/b213OiPed6rPd09p88agn26o3SvePMeXS5sHVG6V7x5jy6XNhCfig+KDe2u50R7zvVG6e0+eNQT7dUbpXvHmPLpc2DqjdK948x5dLmwhPxQfFBvbXc6I953qjdPaXPGoJ9uqN0r3jzHl0ubB1Rule8eY8ulzYQmD4oN7a7nRHvO9Ubp7T541BPt1Rule8eY8ulzYOqN0r3jzHl0ubCE/FHIYS9zNHiTRk1WeOlhypoIJic5x7UpQ1jHze2u4P8AqPed6r7umtPnjUE93VG6V7x5jy6XNg6o3SvePMeXS5saTtxsf987lgmq2ohxI2R/41UJwYgXw5D+uD8RBhmaE2G+YrFTWrK4jVrr37SRMTLY+RZQSYfmDDJ9wrqx6Yz3neqXbeC13aHeAWJdUbpXvHmPLpc2DqjdK948x5dLmw11H7FZYqnAIMxZTuqTl64ZpMzEAR8iAJRt2ntDmyNLFArG11MnEnAZ6wI7N+ctnGGT7l3XHuwO7zvVOBbVrccg1D0U9OqN0r3jzHl0ubHIbbIZT7wcG9vpuub+SUSN9BYqJKLdUpICgEspmTS0A4NyMEksPzSxkBCAQoFKUAKHAAQgbl3d4qc99yVFs2l0o1BSqLp1NDEzltXURi9ttZeZHXOtkMp+XnyObfTVuftVVEyG/wCJYrV8UfBy0RdomRcIprJm4SKlAxR+KPO4y73/AJz33L19s2l0vgFJbqjdK948x5dLmwdUbpXvHmPLpc2KX1FYG2VWlOE6t9TEzMbhO5lCBz/nZMQjTlabGpYOrynMlSa9POT/AMYkz9ZPL5EzmOmH5kLMuXdg+9A7vH1SRtq1f7ZBqHokz6o3SvePMeXS5sHVG6V7x5jy6XNjYtwNhwYqJqrUPcJwiYPY2U/aAoBvKsllw5IYVW5+x6XxtcCqytIGqWXp/wAcpxTdgG/ugwW/KSJCO4d1ZNEZ7zvVNXW9a7dLvALcvVG6V7x5jy6XNg6o3SvePMeXS5sIg7aLy5yq2coKNnCQiRRJUgkOQ3amKPAMfD4oe7213D/1HvO9UhumtPnjUE+3VG6V7x5jy6XNg6o3SvePMeXS5sIT8UHxR93trudEe871XzdPafPGoJ9uqN0r3jzHl0ubB1Rule8eY8ulzYQn4oPig3trudEe871RuntPnjUE+3VG6V7x5jy6XNg6o3SvePMeXS5sIT8UHxQb213OiPed6o3T2nzxqCfbqjdK948x5dLmwdUbpXvHmPLpc2EJ+KD4oN7a7nRHvO9Ubp7T541BPt1Rule8eY8ulzYOqN0r3jzHl0ubCE/FB8UG9tdzoj3neqN09p88agn26o3SvePMeXS5sHVG6V7x5jy6XNhCfig+KDe2u50R7zvVG6e0+eNQT7dUbpXvHmPLpc2DqjdK948x5dLmwhPxQfFBvbXc6I953qjdPafPGoJ9uqN0r3jzHl0ubB1Rule8eY8ulzYQn4oPig3trudEe871RuntPnjUE+3VG6V7x5hy6XNjcFgNImU6QDeojy2ROJP0HBHbN0HIfbds23Lhh2u1D+WJU8HDDubG1huK5fkYfQ7il3yuRYtkWJPW0cZEjcnDhE6XAcZ5CpyxLdrq2ujgmfiDjxDkKeJH2InmhHXVN97c2/oi36ho7FH2InmhHwmTMJhLnTQT5CuETpCbsYhljmWBzWTMe5alI3KYQFJvRpufKbP3bllTTtF0vLmyLgh02ZCnVzHTMAYAJihwj20e9aXSlM/0jzV62Rdlkhp22mG1qplKttSZyGMGXNhjvB44YiodAGi6SaFdTy6HQZsYcpVZgki3IY3nHVLHypvQNoOsiHPIbrpTsEuvNLiN3GTzsipsI663S3Zkldabnvxczaycl2GGnm6cVjn2ZabGimDRmOVhiMcda01pcXukN9K2lE3p5F+g1ZS4GihZgiQh8+2nPvcpzasDFigejb+AWgfgdv8AqQuzzY5aelzRZy7r901aokE6q67RIhCAHXGMYT4AENHaOUy+QWypmWyeZBOZW0YpJN5gUMoLkANR/jjLb52vZFXYtNRWQ4lkTuMHkPGQFa7Fo6yGulqKwAFw5R8Fl8SO0nvbA158KKxXGJHaT3tga8+FFYdbEX5pUfo8wkb4/hY+vyK1hBBBHVyyNEEEECEQYx92bNxMXSLRo2VdOljgRNBAgnOcw8BSlDWIw4Vidi9ujdIG8xqsE7eSI+U2MxTzvlC+K2AQyf3hiD4owhLPHCMXnBKtjdIcGhJsOEb7sroPXfvqVu6ktMqymSrZTBOp5maNjF7YmJc6geEhRirljNAu0NjNzOmUgLUU/TwN0Yn4A5VKbskJhtafgEpc3jDDHYBxRBzWrxQjWpKOi55SB2g2IqhqcKi8uBP3tYPS4GMxY5mTPzTCAiofygYnkhyLd2Zoa0rIGtHUnKqeIJcpzsWpSKqeep15/lCMZtjhxwfHEJLUSy53uUgyJkegIgjzHXTidMKfljmYzN82l0vbE2xZ08VKkkmXsmOYcACEEtoXPDCPA448EJNe7ZUbYW8FxL6PbubgTcmIbY0Hc7AhvCsYMTfIIYB7aETu3sjt67qmXboVCFGyo+oGdNkFubDxlsTLZvNOAeLEjDZ88ufDDrTOSqjZ8VZWvrv0Ra1qDirqtlNOEMURIWYPCJHU8wgjmP8AJAYWWvNlXsnShlEZOrOqvWLvQNK2W1I4+MdcSDh4SlNEbH8wdTZ4q7fOlnjpY2dRddQxznHsmMOsY+GIdiJeOyYx77sUxdWuOgKkNW7MlNlhUJS9tmbUA6xebTI6+bykTITL+eMaonmywXymxzC0Cm5MA8BWUsMfDllTwmkGMPm0FOz+xNTUynjTQOdku0iFz4krtJAvapyVh/8AsiaPdpsmWkO2PipW6DovaqyZkH6qJYV3VBqhX2WDmDUvO3Sc4p1pBstl6pSYoP2FLTpPj3SwVSOPyk1Sh82Nw0ZsyjYxk06ttuqkX3bqSzED/kSUIX9eJj4wQk6z6d39iUFVKONWDf6RmiLpcIJsqyCWspmoXIQ9SNRl7tLyPCDlL5NtjSt5NifF3LjT+y9WIT6Xql21GVTVchjHL/Iuybw/gA4B58Tm1RnNsL317ZqY7toqq5lID5s50Wy3rKo+OibMQ/yijCApJIfuH9h0JQzsk+8C6uvbd1PayoVpHVkifSCbJ8LZ8kJBMHbENwHDxi4gMY3w8MP7S+yLUneWn0aO0jaAY1DKz70J7KkcFEBHVtm1Y5iG7J0TgPYJGE3g0C0ZlTS1f2BqElz6JHMdRg2OU8yZceQSBgKmXtcpVA7Q3DCzKotdkztyT4JJ0QOeM4/NJvBHsqmdFUyahBIcg4CUwZTAMesSCaoggggQvIDgOMHCaPGGrGM4spQo3MuvS1NimKiD16TdBS/iCb9X5hTw0q6mOigfUSaGAk9QzpxDG6aRsTNJzLCREuXAOGPGO9wihmn5atk+tLLajlkvRbuKcXI3HaEykKRmpvMmriA+1ZexmN20T0NvzagivXavDDeOgFZE3JzkEY44EfHqwKkbUs59mT7Q848eK9YIIItihkQQQQIRBBBAhEO5sbP3FcvyMPodwkcO5sbP3FcvyMPodxm2yJ/TNT+3+TVabtfmkPb8iniR9iJ5oR6rrEaoKqqDlSSIJzm7UAj2R9iJ5oR11Tfe3Nv6It+oaOJ6dgklY08q3B7slhcpO1VUVWaTN3TnRTXmU2mrgyUvl+fU3RDESplx1EApC5jD5RGPtUFG3D0XK7lL12meRzgA3Q0ctliqpLEAd8XMUcDBxGIbtvGg0abjSm1V45NUs93R0NapOCqbmTznxOichcpfKYsbE0y7/wBK3zNSBqYM9HoZuzdG7ENq9k2nJhvjY+xGjtpz6yC06eyYaUGidHgThmGY5uTiAww41hoEL6aStkl/5scwx6s/Ly6liF07/wBwNI6dIypQFtyLKAVrTsoIcxDm9zmANah/CPBxAWKR2Sp9/StoqOlE0bizmLGVoIuUDCUxkzgQMQ1aoUPRu0h7L2aoZgmtK3yFWLI/7SmCTLbTqnx4CnE2omGXUXAIdykaoY1rS8rn0u2zcEybEdIbaTA+Q4YlzBxRhmyBUSxxMoIKIw08bjgSMMo6MR8+MnSr3d2NjnOqJJ9skcM45Au3iR2k97YGvPhRWK4xI7Se9sDXnworDvYi/NKj9HmEjfH8LH1+RWsIMdUA6hjLLa0pI6vqVFlUVXsKJlHCvM3rVdzgHYIkiQROfwDlDxgjq4nJblLJAMVjDZqs7cJN26Si66pwImkkXMY4jwAABwjDpaPGxdXBugVtNq5OagKfPgfc7hPPMVg8VH+C8qu+DtBjf+jtcXQt0b2yTiSVkjNqkEuVaoJpKHqrkw4b7a/tfKiXwEw8IjG++qM6O/FcdL0S++oiBqKyodmhYevBSUUMQzyOCzKxmijbTR4aJlpGnEU5pkyKzp99sPle2xVN1oD2pMpfBG4tfghbOqNaO3vjpein/wBRB1RrR298dL0U/wDqIg3Q1Dji5p1FSQfE0YAhMnBC2dUa0dvfHS9FP/qIOqNaO3vjpein/wBRHj2efmHUvW2x84JlOGOOu4TbInVVOVNIhRMY5xwAoBwiIwsM+2SvR+k0mdvWtaKThwimJ02DOWOirLmD3BBUTIQB84wBE19KLTwr3SScuJYCxqXooR9bkTFUfXi8QuVdQqD4uogdrjrhzBQzTHOMB8UlJUxxjNnT1aSWyj0Va47qSUAijXdRkxILwquWWNj+FQutXyE1ePEyr0aSFxNICai7rSo3EwblPnQlqI7Uyb+YiXUA+EcTdkwxrKCLPT0cUGgcJQ0tQ+XSiCCCHybIggggQiCCCBCIIIIEIggggQiCCCBCAHCMwtjdur7M1OlPqMnzuRTImUDmQPvFg7RUg7xQngMUQjDxDCABwj45rXNyXL0Dk5wnMe1Ra/TlIUk7JLrTXwULgnNSbySz9T3JFvxSxu2HHzj6iFVy5Fs6mtHVzymauk68lnLUd+guG9OHEchg1HIPEYuIDGLcIwyNudImR13STS2d8UnE6pZEu1Saq0AzzWnTDqKYhuuWQ63MmOO94OtKWGmQ6D3M7eT09EtiJNOlLdhBwRsC8tm5vZmpUmD1w2m8ofo7rlE9YHzs5m1HrVkz/wDAxeEB1RgBodtc2RuU1IEFpwKMNWMOFsc1B7vrCo6vWTzJS1sDFuYwfwqw4nMXwlITD+9hPcdWEVQ0NaD9QdgqfBRPI8m+aar6uHbMNq/yipRlGyXan2fYb4Wu4UpDezSfAYdqt12KT2mvDzoZn9FtKvKTbV5Rc7p55hueaNFGomw6zOXKU3lKOUfkxGiaSx1IZs9l7xMUHjJc7ddM3uDkMJTF/KEWziY2nNb/ANRl9Hz9BPa2VQIkmSeAb3besVDy5y5/lxmGxLau01k9mvOZ4yh1jTrB8Far30mXCypbxZj1H/fFLzBBBHU6yZEEEECEQQQQIRDubGz9xXL8jD6HcJHDubGz9xXL8jD6HcZtsif0zU/t/k1Wm7X5pD2/Ip4kfYieaEfCZs+iUtdNM+Tb0TpZ8M2GIZc0fdH2InmhHtHEbHOa7KYtzLcpudJF1NJH3xD+hf8AzEHU0UffEP6E/wDMQxty9JS3lqdtSndQoHmJP/ZzH7Yc5uwYhes+WYIVG5eyJz+Z7a2omSIyJuO9CYTLBw48pSdYQfOzxv1jWjf+2cn2eQtZznNaB4tz9gKz2uprvUWaQZ+QEk/P5rtJzsd0pp2XKv5rdRGWsk98o5eSsiSRPOMLjCG6s/KWMhtdSstlczLO5c1lyKCEyTJkK5IUuBTgXMOGPliWbdK5WkZVYtiqTWsJsBc+VRTMRuTHDNrMBEyYm8ARUqzdMv6NtVSkimhCJTGXy1Fu4TIfOUpwIACGYOGGt/4a+looIbVrhNLjjkgNGGbTmAJ6zgPglrvPp5Z5H01PkNw04k4+SzKJHaT3tga8+FFYrjEjtJ72wNefCisetiL80qP0eYSd8fwsfX5FawjcdrtHVpculE52tde3lIHMsdLoZUk3M2dlw93kBMdQ8WuNOcMecsdWPaXN4LsFkrSBpTUyDQEeVY2mziTXotVM0ZUzO+fnaTtVUGqBeuUVwQ3pA7Y0dP0m0tH/AOYGzv8AiFT6mOy0KfvH0jf7On/0hCtwxYJXPc3L0fBODkAA4LIlqOU+yCNJtJnL5kr0T6GJTNmoY7Rcdt2sqxD5cRTN1wDl4OKGCqPQRVo2eO5PPL3WnlE1ZnyOGLyeKpLIjhmwMUyOIb0xY0Jav8JtIfDDP9sSNp6eYf8AS9uXj3QJ+xShR5e6VrGu4l5aBklxC7bpNpb/ANYGzv8AiFT6mNc3isu2tIjKTt7h0ZXO7zKlEtKTE7sW2TJ7LiQuXNn1eaMazEIIVYx7TwnrwXNIzBHCMbP0e7Az7SOr01MyFy0lu0NFHzuYzETA2aok4ziUo8JjED5Uax4Ahpp4Y+jnofyyTJmFrXF11CTV6JTZVWkkQH7WJ2S7cpifEOEuYB4I8zPLW5MfvFfYwHHE6Al6uFQk1thXE7pOeJbRNZO7UaOCl60RIOGYvZAwZTAPGBgjHRhrNJ5It9bMUJfpkQFZyJC0xWAJhrCYIE9Zcn/nE8uvrQ3gQqce4X5bMXaV5kbklbdsvowVjfykK5n9JA0dGpJBFw6lxzn3S6BQFDAVuUCCBzACJ96IhjqAMRjUQjjDh6HlxZ1aTRh0hqvp10LWcyl3TC6Bx1lN/tA5TEMHGQ5TGIIcYGNGM6VlupHWNPyq/du2oI0hVKwpTmVpb7oJNuFZE2XrSHNvyD4fclMQIbsnO3OY7RxagliwZAI0pYo29ZLRgrG+9O1jUEiBoyklLMFHjx9MDnIkcxCCfaUspDZlMhTDhwBvcxi5i44dam2E8vJcCTUfTjcXE0mSwJlMIYkRJ1x1DjxEIXEwj2CxQa1V0JCyqC4Flrdrgpb6j7dTsV35MBNOprgiVZ2ceMAzGITwZsN7lylVOYxks0oijDjn0KZkEEEPwmqIIIIEIggggQiCCCBCIIIIEIggggQth0ddEUKRcULVAKTKjHKouEC4Z1pS6H+MtseDx0tQKB2pshyYCumVFwqmVUi5CHEoKp5sp/GDHAfyx8sMII8BrW+6vRdislttRq1wq/p+m0Mc0yepNxMX3BDDvz/JLmH5MWVaNUJazSboEIg2bplIQhd6UhADAofkieOx5UH0eunNKnXTzN5GyyImw4HC+YhfmFV/OLDc6VdwPsc2LqWYJqbU9eI9DWmvfbYtvMxfCUmc/wAmOXtkaofbVv01jQaBgP3PI8sFqt2420VnyVsnH8h/nFYlov6QH2YKvuPL1XG2kbTIXcsKY38SH1soF83ayiPhVjpNkFt/6prSM6jQTzOqedlOcxQ17nWykP8AP2ofkmhQtE24X2N76048VU2pg/U6GO9eUuRbACibwFPkN8mKj1nS7WtaTnMgeh9qTJoq0U1daByCXHyhwxGXgoRcy81NVU4wj4J7BwXDtGftTuz5zbdlyxSHhZx5j/fgosYYwRzp5JndOTuYyp8ntT1g5Uark7U5DCUwflLHBGOs45GysbI3Q5ZA5pa7JciCCCFF4RBBBAhEO5sbP3FcvyMPodwkcO5sbP3FcvyMPodxm2yJ/TNT+3+bVabtfmkPb8iniR9iJ5oR1VXorOKUnaTchzuDsViJkIG+MIkNlAvhjtUfYieaEe0cTQybTI2TmrcXNym5KiXNJY9kz5VnMWa7B8kOVRF2mKSpB8Yo6wjfNtamsMzoKdt5vT8zRrE8tcEavJqfdbfdApGAmQqZSgQc+GXOTV20UTre2VKXKY7lqaQsZykUMpDOU/XU/MOG/J8kwQrdy9jolb7bXdDT9SWqm3wS+a4qo+Qqob8oeUDx07SbIVkW3CyltAvpyDpaThrHF8CMPissmu7WUT3S04Eg5CM/j5FYHsb+H2Tqow7j/wCsSKDxJiqbRXU0fJr0SWYTWSbT1s5lCxjI4fzqfBj2D4ebFMLHzx/U1naNm00cneTF5K26y658uZU4kDMI4RStkmgimnZbVNO2SN+Dc2fOBy6FN3YqHsjNDIwtc3Pn+JWcRI7Se9sDXnworFcYkdpPe2Brz4UVh3sQ/mlR+jzCSvj+Fj6/IrWEEEEdXrIk0mhT94+kb/Zy/wDpCFb4oaTQp+8fSN/s5f8A0hCt8UNYvvH9nyTh3utWU2r/AAmUf8MM/wBsSHJ0ur2WopzSPrqWz2wstqmcNnhU3E4WqN43O6NtRBzCkTUXVlDV2sJtav8ACZR/wwz/AGxIZPTV0fboVXpSXCm8kt1Vc2lLp6RRu+ZSZysisXaSFzEOQggO+AeCEZQwztyzxHjw5F7YSIzhyrFumHsl/wBWWUf4rmEaXuZU8gq+rXEypik0KJlChCFTk7d6o7ImYC4GNtqmscw64yfpWby+9PWv+H3XMjGa1tLW1t0Gy9W0hPaYRcnMm3POJas0BUwcJSCcoY4Zi8EKRiIO4LvHFJuLiM48FmeinZFbSBvhT1LGIfoQU+7psqQDetsktanW8Zt6QPCcIzPSWpi7F8byT+p0bYVihKBUBpKWYU+6KDdgkGRAgF2re7wMxi9sY0ZJT01faKuiMjPZa8cSa5F0nJdwvGqhkXLCTNz5hVIcNZBWUw1+6IYo+5jS3TQXj99mt/8AETz62ExtskhfHoGb1/34L3wWtySmG0M7aVwL+r7U1vQlUy2iLgS0zNR88krkiMvfpgY7VyYxiZQynLh5wkzb0sKJWNJzKhKqm9OzlAWs2lTtRm6SNxKEMYpvKGrhjNy6UN5C4CF1611dtULwf9WNwaYLBveCg6C0g5SiQDVEgEmqhJAuUqE3bky5xDi2whMQ8Uhe2j4zLim4eh3zQcHszcS4FhNehJpRefTH/aJ4xXRWvfLbaz+a0pWqJpna+sEgl0/Y447SA+xPE+wokOvENeGPuily5VYXVoSaUXn0x/2geFfxxj0xgldK13L5BfC8syCOTzKdW50rk2ghb+eUrTNQNaiuXXBDlGfsR/8AVkgE3rQENxLLhlEcvAHW9aQxsO2P0P8AfK7X9ms6/wBGFhcuV3RynWVOucpCkAxziYwFAoFKHkApQAPAEM9sfo41ldr+zWdf6MeJYsiB2JxK9NdlSDDQlbgggiSGhNEQQQQIRBBBAhEeQKJhKAAJhHUBSx4jsqdnrylagl05l50yP2DgjpAyiYHKByGzFxKOodYQm8vbG7a/eXtuGVwlkxbG3GMBRCgKnEohmA3QdxzID2NuMXhoCp/Q6/MigGjtphyC8JG8lnW1U/VohlBsY+Vu8N2UTDx+IbX2M0MRHO1p7I9tWRUOpauhDXD4nP8AEHjC0imuzQ1kYlhnJHYo5msjcQvDQNT+h3HMjwaytwg4aDqX0OvzIsbBEXvt2j/5G6ynO4+n6Y6lHA1mbgF4aGqQv/4hxzI9Rs7XpeGiKj9EuOZFkYI+77df/wCRvijcfT9MdSX/AEJ7Zurd2VRUmbNVhOJw6UeuUHKYkVSL1iRDFHWG9Jmw8eNG7I5cHdk/pqi26nrbNIZk6KUd7th94kU3hApTj8uHvOoRMgnOIFIAZhMbrShEer318e5116mqPMJ0Xjs+583E3JvEvmFLCFwoJ7wXkmtmpb7uJ6i7MB2DHDqSt4JGWfZkdFEdObsGnxWElEUz5imEpi6wEvFFgbE3AC59pKZqIygHdOWhSOv6QTeK/PKYfIYsR8AMRCHf2PS7DKWyypaQm8wQZJJqhMmRnSwEKObAipSmHyJDh4xo0PZQsd1oWQ2qhblPiOPYcx8j2KuXVrBT1ZiceC8eI0eaxXS90b6tmV6JjO6Spp/OJZN0U3aijFATlTX6w4D4RyZ/lxpPpbrp5cPUDPv0I8VbCuabAMAqGU/pqfOg9XVN98Mp/TE+dGY2bsi23Z9HHS+yB+QAMTlY5lZ6m7lDUzOm20jE48SlH0uF0u8KffoR4Olvul3hT79CPFXPV1TffDKf0xPnRypfU0nnC+0MJqxerlDNtbZwQ5svZygaJB2ynbLG5T6Rv/0m7bp0TvdmPgpM9LhdLvCn36EePYujZdM3/uFPf0QYrtHHmMwayliu9euUmbNAhlVV1zgQiRA64RMOoAhBmy3ab3ZDKdvj6pU3PpG53SHwUlR0ZrpkQVWNQc4AiRDHPmQ4g8HHDHbG1rZXL8jD6HccbSN06VJoR3TVuFToMzFFJzUBi5TqF4ytyjwB446+1w4Y5OxtYbiuXhwYMPodxcLw1tr2jdKpqLViEWORgBjjhlt046PgNPKoezoKOmtiKOkeXYY4ni0HQniR9iJ5oR7R6o+xE80I401eDL5W8dlIBzN0TqgU3HgGaOU2tc92Q1a0XZLcpcqDghUrAaaczvRc5hSzql2krScorKi5SdHOYMhDH60S+LGZT/TIpSnbsGt+4k85PNCzFGW7pIRHac6gkAo9fjhvy8UW2ounbFNUmldDjIG5ZAIPBxwxzFQ8dsUUsYlD8xOHHpW+1AKcpiHKBim3olNxx8mjNBi2I3bIpt26QZSJJEKQhC9gpQ4IW7Si0rpvYSsJVJ5fIWc0SeMd1mVcrHIYo7YcmG98yN3WtrBe4FuqcqRw3TarzNkm6OgkYxgIY4ZsC4wzq7Er6Kz4q+YYRS6M4z9iXirqeeofTsPDbpWUxI7Se9sDXnworFcYkdpPe2Brz4UVjVdiH80qP0eYVRvj+Fj6/IrWGIgEVL0X9jotFdqwdFVfPiTw03mzHdDnc8wyJ585w3pcmrgiWuIYRezQS9qNbL4L/wBQ8dL2nK+ONpYcM6zKjYHuOUFr6VbGTaOn0n6MqmVYS1KYIGaPU2c7MkVyibhTUACb8g9qOqOsPsUFjTkEChUqY9sWZlxD8qcbz0oL69LjZ+Z110F9UO4l0Etwbq3Nn2xUpMc+Q+GGbHrYTCVbMyxWfJEmVqnLVkI+uKtZ6VdQoeKQzcgG/OCIaI1kwy4ydafSbRGcHhc64ew/ypFEX9tq8mUsmjcdtboT0pVSCcNZcFkSkFPXx5Dwld3Kn0g7GVk4pesq3raVTREM5MagdGScJjwKJHBXA5By8JfGKbAxTBFu7VXPp69FAyisaXdGcyeaJiokZQuQ5DFMJTkOX3JimAwCHg4whetkys3Lrj6Nk4qAUCDPKTwmTJzhvwTzlK4Tx7UxBzYdsmSFqask2wRz514mp25GXGl02O+ipxpM01Wb+s7mXEMvKnaCLfcFVOkS5TkOJsd8OPAWGSuDsetvqwkihqiqavahKyTVWbkm9SKuypHycJQOU2HWhwRpnYah/wByrlfCLP8AZqRQeo9cgmn9FV/UGEqqaSOpcGHBe4WMdECQvzfTqqJzU24ujE2fTbcTcjRru5ydbc6BOsSJnMbIQuOooagjkULKG9QVtT0rd59yvpig1W2scpsh1ClNlHyDHRgOEZTan8KNH/DLP9sSLYeCzgqFHCcq5dShsZ+LqL0mHMhMdkHsXJtF1WlqSoeaT9Cm58ks+fyx5Mjqt1V0zkAh9qDKTNh7oQx3oRZngDsxK/Zk/v6tp8HPP2hIq1FPLJO0PdiFM1ETGREtCn4zqWby6UTKUs5o9ayuZbXu5ig4ORF3tZsyW2kA2B8ht8XNjgPBHWiGqPAwzOx72I+zjpFSjdrfbqdpwAnExzBiQ+QQ2lIfPUy6uMhTxZ5ZGxMc8qHY0yOACduwuxhWyXtFTDq4UlfPKwdtCuZgBX6yAInU34I5CCUAEhRKQfCUYzCp9jZttJ6LqcLdknVMVU8la7Ro9bTtyUDmMGIJKhnwOmcxSlMU2rCHDDgjwUwGLiA4hFKNXMXZWUp8QRgYYL80T2XuJW+csniCjd42UMisgqGU6ZwHAxTB2QGONDmbKLYn7F99/VdLm+1SKsiGebwu9TekwK4D5WJFPKqfsQmYcMXSCUTRh441ASNMbi0pmdADR/pTSPvNN6YrArw8rbSFaYplZL7SfbiOG5A14Dqyqn1RQbqUdivxFQ+lP/BCibEH7Zmov6puf3xnFgsYrdoTyxzkMdgpWljY+PFwSc9SjsV+IqH0p/4I4Mx2JeyLxAxUF6pYHHgOhMkxMH56RgjHbqbKxKLXXJqekFbdvpitI5ivLzuyTMhCrCmcSZwLtY4Y5eCO1s1sqlAXNrOW03O6emdILTNcjZq8XWI5bbYccCFUMXKYmYwgGOUQ7OAa4Twrg3Lzr3jT44ZloG+mxJVFSsscza2tQjVSaJTHGTTJIqLwShxJql3ihvAJSeDHrYQF8xcyx84ZvG6rV43UMkqguQSHSOUcBKYB1gIDxR+l0AAQiQWy02nl9FXnp+rpe3K1Cq2Sou0yFygdygYgHU8okVSx8JRH3UPqCufI/a5U3qadrG5bFsjQv0BLV3x0dqZrWpkZwaeP1HQLGZzDaietuVUyZS5dW9IWN79S6svjhtlU4/DJubHc7GX7TOiP56Yfvq8bkvvddGyFpairleXqTRGTIkWOzTVBMyuZQhMMwgOHX9iImpe987m44509ia1sYJHEtB9S5sv+Mqn0ybmxjVV7E1baZtVOglXVdI3eG8Mo8TdIh5xDEKYfzwjAw2ZaR4/gwmIB2ei5PqoaLRe0xKJ0qmEw6AJPJVO5YBDvJTMgKCpCG1AoQxREDkx1Y6hD3RS4hj8fBUQjLe35IZJDIckFSx0otCi5OjIkE3dvTVHSBzgmSdsBOUETDvQK4SEcUxHiNmMXrQzY6oW4Zm+D+Or8oMfpCqulpXW9MzOQTpom+lMxbnaum6gb1RM4YGLH51rjUgegLiVRS6igqnkk1dy4yhvdiisdPN82Jqz3xVALXsGI+Cj6ljoji12ZdIaaPDBgLtcxf5wY40eRAAjxE2xjGe4MFHFxdpRBBBHsgHMV80IxgwENcAhgMMBo36Js7va6Sm8z22TUcQ+/eGLlVdYdcREo/kz9aXwjvYhbTtGisemNVWENaP8AcBylPqWmnrZRDCMSVgtl7GVNfKouh8jb7U0REu7ZouUdzti+EfdG7BA1j5MRimllrGUxY2nOh8jb7a7WAN2zNcA3Q5N4Te5DsELqDy4jGVUZRMkt9TjWR0/L0pbLWxcpEkg4R90YxuERNxmNrjROkXpmSG0oOJHTm01BVoZiHKU2ZsxN/KmDhP4hfjMXj5Yti3bVv5WewWZEWw83zedHkPiVrFHZ9Jd+D2ipdw+XyC2zdi8lL2ap400qR+CGcB3OzS3zhybtSE4/O4A4xib1/dJ6qL5vjt11Bk9NpHzISZufeD2Dqj/CH/4BxFjXFaVxPbh1A5ndQTNaazJfhWWHrQ4ilLwEAOwXVHQgGvXG1XTuDR3faKmoG2T8vEP0jz09SpFr3gntAmOPgx8nGev0XiHc2Nn7iuX5GH0O4SOHc2Nn7iuX5GH0O4fbIn9M1P7f5NSN2vzSHt+RTxI+xE80I66pvvbm39EW/UNHYo+xE80I4M/RO4kMzSTIJ1TtVSkKXrhMJDao4rps07P1Lb5Pu3KZ2gr7Y6R/0V1+xPH3ul7eE/8AWll+ujGBo6PV1Wqu2JUNUSRy+6TZKAaPKmj1dZVfbRoaohUxzbYZkpmx8sdpSRWdLaL7Q9sZw4trwxHXjjj4eKw4Oqo6dtOIDmflY4Hkww0LdWyPfhVpv4ED9urDhaNv4BaB+B2/6kTVcaPt13hgMtQtRrmAMpTKNFDRTawsne0/Zii5bMWirJ+2liKS7ZcmU6ZwDfFMXiGMjvzHS0V36OghnEpjOkEch4sTgrlYLpZ7RmqHxluUOPsWexI7Se9sDXnworFcYkdpPe2Brz4UVhvsQ/mlR+jzC93x/Cx9fkVrDii9mgl7Ua2XwX/qHiCfFF7NBL2o1svgv/UPHSVr/dN61m1D7xXTbIPQdQ3I0X6hkVLyd1PJwu6ZnTYs086hwI4IYwgHgAMYlFJdBe/M8fJM0LZzpE6g5dseEI3SDwmOoYoBF3pzO5dTjBR/Npg2ljMggBnDxYqKZRHUGJjDhGOr3pt62TMorXdNJELwmPN24AHz4iaeslp2ZLBins0DJHYuKwbQ/sU70d7DyGj5k7TezchlXT5RARFIFlD5hITHhAoYFx48BHjjHNkHrplQ2ibXIu1SlXmrYsqapGHAVVVjgUQDzSZz+Qgx63T2QayFsGaxzVk1qZ+QN4wpswPTqj2NsKO1F+UcIlNpaaXdS6VNWN3L9EJPTMtMcJZJUlM4J49cqqb3ag73fYAABqAOuzK0tNNPNtjxm0rxNMyOPIYnU2Gj7ybl/CLP9mpFEnCBHSKiSpQOkoUSGL2QGJ27DR95Ny/hFn+zUihszdixlztyBQOKKR1QKPHgGMN678U9LU33QWiOkE0f/e0lnLuPrI+0u0FbESiYNXzK3MuQeNVSLIrFXXzEOQcxTdf2QhI+rJVb73Ml/TlubHbUfsutVVPVskk6lvpMgnMHyDQypXyxhIChykzdb4YcGlrcNJ1pETU+OjwVQg4Ildsyv3921+DXn7QkVRDgiV2zK/f3bX4NeftCQjZ/4lqVqvuip1BqCLX7GxYf7D2jyymz5uCVQVcJJs6zFwORDD7WT/MHP4BVNEudDyxp9IK/tN0wsiZSTJKdEJsYvADNExROU3Yzmyp+U4RfdFAjdMqaZCkTIGUpChgAB2AiStafACFqZ0UWcvK0DpzXw+wPo61HOWq+0zyYk6EyoSmwMDhYDBnL4SEA5/KQIx3Y573jebRwkyD1zt09pgQkz3MO/OQhQ2hT5SWUMeMxDxluk1oiUxpUnkRKrntQS9pJ9tM3ayddFJM51MuY586R8w4EAA7GvsxwtGnQupPRXnM4mFJVBUj0k3RIi6ZzdwgoiYSCJiHACIkHOGJw4eA4xEB0O0ZH96e4SbbjxL3047Dhf7R7n8naIbfP5aHRWUgUu+M4SAfWw88gnJ5TFHiiDhtWoY/TKOsfLENdkMsR9hDSKm52TcUacqTNOJdgG8IY4+vJh5imbVxEOSJSyp85hcmdbFjg8LZGxBe2YqL+qbn98ZxYMeAYj3sQPtmKi/qk5/fGcWEHghlaX4kpej+6UdtIjQDvvXV97gVFJaJK+k81njt40c9F2RNtROoIkNlOsAhqNwCADH3sPsXl2ZjcGSPK6ZM6Tp5k7TcuxM/RcuFiEOU2RIqJjlzGwwxMYMvDr60abH0kbXI1gNKKV/IU6kB50PGWHfEBfdGfJtWXt82rL2Y2UIY8cffb6hjMjDAIFLETlYoAMAiSuy+XHl9RXZpCkWaxV3FOMFl3uQcdqUdCQSpG8OREh/IcIbTT90rax0ZqUlo0tTJHR51nbp1I6PnbsFg9xtXulBLvi5hAuodR8ohEYZ/P5lVM7fzicPVplNH6x3Dp25PnVWUEcTGMPZh1ZtKS7bzoSNXKMNrCthsZftMqI/nph++rRn+l7b+fXS0cK4pWmWXRKezFqkk1a7cRLbBBZM4hnOYCl1FNwjGAbGX7TOiP56Yfvq0MXVNVSiiJA8nk/mTeTyhmUDOHrtQE0kgEwFATGHg1iARGTktqHOby+aexgGIA8iiiGxraRYjh6gSFDs9Gpf8A8xD07HnoT1Lo3Pp/Vdaumic9mjUrFCWMVdtK2Rzgc4qH4BOYxCai4gUC9cbHU1NvLyULdkz0KNqyU1MZiBN1Flzoioo58cuYA4McpvyRm2MLT108rTE8YJKKmjYctq6+dzhlTsoezSZOk2UvZIHcuXCo4ESTIXMc5h7AAAx+dS61YEuFdCsKoTTFFOdzh5MiJm4SlWWOoUvzobnZBNMm4da1TP7UqyVahZDLnO0vme3Z3Mxw3xDnOGAbSYuU5SBqHMAiYdWCNhwxNWbSmJu2P41H1cwkOSOJEEEETSj0QQQQY46EJgNDK0tMXcua6aVOdRdKXNd3Iy0u9I7wOUDZzcOBcxd6HDm7BddKplNJRRNPqvHq7WTSWXIhmUUEEkUUw3pS9gA4AAIlRox139j2+NJzNRTamijoGToxh3u1LetiJvAXMBvkxUK6lDpXIt1UVMrYYTJkdFMxuAiuGKR/knKUfkxyrsmQzG3YGVUh2h4HZnwdgOXjWtXXez2GQwtG2Nx7eRJFpGaccxrDdVP0AotJ5IOJFpv1jl2HicaZPnj4usIUgTGMOJhxGPq6aqsna7ZwmKS6JzJKEN1xBAcDBHyEwjqHijoiw7EoLEpWwUDMBy8Z+JPH/uCzmurqitlL5zifl1LxBBBFiUWiHc2Nn7iuX5GH0O4SOHc2Nn7iuX5GH0O4zbZE/pmp/b/JqtN2vzSHt+RTxI+xE80I4c+cKNZFMV0jiRVNuochi8RgIOWOYj7ETzQjyJQMBgEAMUd6JTRxLG4Nka5y3Fzcpqm/QmyB3BpzIlPm0uqpqHCKqe5XAl89PV+cQYYqhNPy3NUZEpyD+lXRt6O60duRzeKdPMPxmKEZHd6xtjVGaj2r5bJKaMcBMV4kuEvOJuyUpDFA4+UBhCLzU7aiQujkt/Vc5np8/sTtiXaS9n14TEN/lDj20dKUFBdq94AjpJIXnjaODrGLdYCzKeotKxTi6ZsjeQnP6+KqlTVZSKtGW7JBOmE5a8arFwRUpfOwNqjuMdcRNlM2fyV+k7lbxzL3xB9bXZqGTVA3gMGuK6WFeTWZWZo51PFHS82VlyRnB32O3Cfsnza8fLGe3yuU27DGzMny2uOGBGBGbHlz+CsdiW59qOMbo8CB2LP4kdpPe2Brz4UViuMSO0nvbA158KKxYtiL80qP0eYUZfH8LH1+RWseIYvZoI+1Gtl8F/6h4gmHAMN/aLZDLzWptvIqTp6mZC8ksrQ3O1XcyxyqqcmIjvjkWKUdYjwFjpq0IHzxtDFl9LII3EuT77KB7T2qP6Yw/eSREjihsL56c94tIG3L+iqkpeUt5U8URVUUl0qcpLAKZynDAx1Thwl7ELF6mZx3Kffo5+bH2gidBHkycqKl4kdi1dZBHZ+pmcdyX36OfmwepmcdyX36OfmxJ5TEzwKp3sNWuibl/CLP9mpFB6i+9+af0VX9QYhpo3aU10NFuWTpjSNNsXiE2WTXcGm0tcKGAxCmKXDIcmHXeGNvPNlFv69ZrNlKQpspFkzJjlkzzHAQw/8AqIrNTRyyzukboUvDUNZGGFIvGU2p/CjR/wAMs/2xI6n1MzjuS+/Rz82OfIGc/puey2bNpS6M6YOE3KJVWpzEE5DgcubwYlixEgtwUW33sV+kQR1RK/ZlPv6tr8GvP2hIxnqqGkB3oU16Gef8xGhdJDSDuPpRzaRv6up1q1WlCKiCBZQwcJFEpxATZ85z49bxYRXqOilhlD36FKTTtkjLQqE7FPYkaAs66r6Yt8k4q5QBb5w3ybFMRAnkznzn8Jdrhs7wXNl1nLYVLWk2EDM5MzO52rNlFY/AmkA9sc5iEDwmCJXyPZNb503JmEpllEUu0lzBum2atk5M8yppkKBSEL9scAFACxr/AEgdNG8ekfQ5KTqORspdKBdkdqFk8ucInWEgDlIcTqnxJiObDslL2seH0Us0+XIcy+sqGRx4MW+erK1B718u9LKfVQdWVqD3r5d6WU+qie/qanHcp9+jn5sHqanHcp9+jn5sS3sNLzUy9pn5V+g2wN3pdfi0dN1tLkwbkmjYDrNQOBxbrlHIsljx5TlMGPGGA8caS2SSxH2Y9Hl/NGDcFahpMTzdplLic6AB9spB5SFz4cYpFCJx6O2l7d3RlpV/TtLyRpMJU8dbs2qcS9wttKgkKA5MhyYAIFLiGvrY2srspV/V0zkUo2mDkMGAlGSvBKIdj7oiIFDLFLlxnME+9pY+PB642xAj/wBJiov6puf3xnFgx4BiAlh73V7o53Gm1ZUjS7QH8waLMTs3jBc7ZFFRZNUQIUpymDKKRADEw6uzDCdVQ0gO9CmvQzz/AJiFayjknmy2LxTzNjjwKWzSyOZHSkukokYUzkqZ+YolNgJR28+uKo7Hzpcl0hrdhIZ+5zV9T6RCPRObfPkOAjkOyPAU/jYG92ARIS4Myqe5NdT+q5pJVkpjOnqz9wm1aKkSKoocTmAhTZhAMR7YY59p6vrqy1fSqsKXaPGs3l6mcmdqcUliDqOmqGrEhg1CH6o64fz0rZoGsPvBNo5THJjxK+N2rWSG9NvZxR9StgdSuZpbWfDr0j8JFCD7k5DZTAPgiCN/bIz/AEe7nzajagTzLtT52rwpMEnjYfY1ieAexxGKYPcw1fVUdIDvQpr0M8/5iNM6Ruk9cTSilspb1fRcnbOpYoY7V/KpY5ScgQQ36ZjHVOAkNvTYZeEpcOPFrRQz0zsHe6UtUSRStxbpVN9jL9plRP8APTD9+XjINkA9p7crsbiR/eUYmlZLTrvJYO28roenaXlDiUS46x0VJjK3Kiw7YqdU2JiKlDrjm4o5d3NP+9N57czqip7SskQlU2TKk4UYyp2RYpSnA+9MZYwBrIHEMNzRSmo23ixx8UqJ27VkfBaO0cb9TzRyunLKwkhjKJpjtL9hnyketREM6Y/m4gPEYpR4ovdbe4UjutQ8nqym3ZX0mmyBXCCvug7JDBxHKICUQ4hAY/OIYokMJRASmLwlNDFaLumPdGwCClJUSnLJu1nT5LaJdOEFViJrn3mKeQ5MM+8x4etCHto0rZI9uGYj5JvSzFjsg6CqHbIlog/Z3ogawphkBq9kCJjFSSDfzJqGJjIeE4azE+UXjDCNBy5TjiAgIcJTRaYtztIMQ38/t6XzZC8H/wDriadzrZ1bebSUrCWyGSS5zNN3ju9WSNjtGCSmrbVTAc59rzHzmNvtZs2AcUVaxb02XU7ZGyoBEYxJzgAfEkAKVr7Lqoy1xjIJzcWfUtCCIY6gwhmLB6ElSXN3NOKp26mabPgcgHJleuy+IQesDxz/ABFGGcsHoYUvafc03nm1VNVBMpwXVJ9rNjfyRB4RL25tfYKWNrXTvBS1m6fNNqlmRW5TY7Q0T37hybsJE4/L1oe6EsZvb+yNPXS/Z13GFzzmysM5/SPM6lZLOu3HTs9ptM4AcXqfJYXUWiDbGfUIhTKVPpSsjYDGbTFlvXZDjwnMqOs+bjA+IfNhDb7aLlW2McndOEui9OmPlRnLQg5A7BVS/wAGPl1dgxoYOitkVRfVw4RqeQFllKuDgVq5aCZVw1Dtli+7AfEKAh40OFK5pJ62p9J4ycNJzJn6O9UIIKorEHUYvYHsCWKtT21ei5E4NpsL45M+BOIxOnB2fA8o8FLSUVlW5GRSuAeOQYaxxhRWxEpiiU2Bg4DRYiydcBci09L1EJ8671iTdBv5Ym8V+eU8LTf/AEC2s0M4nttdrZPNZ1JCsfKir/MnHrB8Q2rxgjvdAKfzGW01VVBTxquwmshfA4K0dEEipE1g3xco9qchh+XE9fa07OvZYTLQoX8OE5wdIDsxxHXhnGZMLDpKmyK91POOC8ZjxEjP8sUsemfbz1BX5nRkk9rZTkpZqhlDVipjtv8AmFP+UI0YGscIoVsiFv8AozbmT1Y3TzOJI62lcxQ/i62UMTeacpPzzRPUNWsOKNXuLav2rYUEhPDZwT1tzeIwPaqjb1J7JaEjBoOcdv8AleBgggjQFXEQ7mxs/cVy/Iw+h3CRw7mxs/cVy/Iw+h3GbbIn9M1P7f5NVpu1+aQ9vyKeJH2InmhHDnhVzSZ+DfNunc6u15Ouz4Dly+GOYj7ETzQjwdQiZDHOYCJgGYTGHelLHE0TsmRrluLhlNUXarZT9pPFy1QjM0JwYcyvRUihXBvOz64yK0prcFnH/pETn52eYNr6DCnk/vcd/h5muKFXV0mLJM2CsvqCZyyrQLj/ALPaNQmBTfHl2so/KCEMvLWtsaqcqGoWhn1MHz47oVmO8P8A/b5TgHyThHZlg23WW9T+zTUL4Af7gQAPiMcDqBWJ19DDQS7bHM2T4HP8sfHBPxYd1YfIgFuhkJH5g3pT72Yf53rw/RG9IidJpJM6ifEZSiXu5k+P1iDJE6qpvNKXXFcrCS2aSezNHsp2k5bzZGXJEcJO822kP2DY68YxPZAuzHYxbVNrDMXHDB2d3Xjx6lebvWo6tBi2kMA5NGr/ACs/iR2k97YGvPhRWK4xI7Se9sDXnworEnsRfmlR+jzCa3x/Cx9fkVrCLE6G+ljaChNGWgpDUFfyeUzliyORy0cqCB0h2444Dq7BgiO0PPYqq9DBlaWm0LjSFw6rYjYSzNYqMwEDK5zYexnAnW5eCOnK6MSRtBBPUsup3Frs2HaqF9PBYf3z5DypubB08Fh/fPkPKm5sJl6ttj6713PITT6yD1bbH13rueQmn1kQvssfMfqCkNvdyhOb08Fh/fPkPKm5sHTwWH98+Q8qbmwmXq22PrvXc8hNPrIPVtsfXeu55CafWQeys5r9QRt7uUJzengsP758h5U3Ng6eCw/vnyHlTc2Ey9W2x9d67nkJp9ZB6ttj6713PITT6yD2VnNfqCNvdyhOb08Fh/fPkPKm5sHTwWH98+Q8qbmwmXq22PrvXc8hNPrIPVtsfXeu55CafWQeys5r9QRt7uUJzengsP758h5U3Ng6eGw/voSLlTc2Ey9W2x9d67nkJp9ZB6ttj6713PITT6yD2VnNfqCNvdyhOb08Fh/fPkPKm5sHTwWH98+Q8qbmwmXq22PrvXc8hNPrIPVtsfXeu55CafWQeys5r9QRt7uUJzengsP758h5U3Ng6eCw/vnyHlTc2Ey9W2x9d67nkJp9ZB6ttj6713PITT6yD2VnNfqCNvdyhOb08Fh/fPkPKm5sHTwWH98+RcqbmwmXq22PrvXc8hNPrIPVtsfXeu55CafWQeys5j9QRt7uUJzA04bEe+dIeWNzY89PBYYf/ifIeVNzYTL1bbH1h967nkZp9ZCo6XU1srN60kqlj2B5fICS/B8mci5cXO2H1+vCI9Zk63VHuKhjkdk4OHWvD6hzRjiCq99PDYb3z5FypubB08NhvfPkXKm5sQN1QavDD37Ji5xSHtzuRXy6eGw3vnyLlTc2Dp4bDe+fIuVNzYgbq8MGrwwfZMXOKPbncivl08NhvfPkXKm5sA6cNhsPwnyLlTc2IG6vDBqg+yYucUe2u5F3FXu0ntXTt03UBVBZ84VTOXgMUygiUY3voJW49Wd6kps4S2xhTqAvT5g3plh3iJfLiYx/7qFxwxDGKXaB1ufUdZYk4cpZH9Rri9NmDWCIbxEvzTH+XFRv/a32TYMuQ7hycEdunwxUvd2k9sr2ZWhuc9mjxTIYa46+TyCXSBNySXskGRXK53K+0EAplFjjic5zcYiI8IxxKzraR2+p9xOqhmbeVSxDr1lx4R7BS8JhHsF1xPnSG02Z5cwHUjpLb6dpgcSKK45XbwvjmDrCD2gfGbijl27d1rUvFJkUoyYzpcdH+T8PktVtO1qWzmZUud/EOP8AwmE0h9NeR2zF1I6T2ioamLiRRUpszRmbxzB15w7QvyjcUT6rKtJ5cOoHE7qGZrzWZrcKq48AdgpeAADtQ1R0eOHFBrLrCOt7uXSs67kOFO3GQ6XHSfQfAduKyC0rXqbSfjIcG8Q4l4xxHXGzbMaQFWWMm23yR1umVKnzOpQ5ETN1/Dh7g/jl1+UNUay4YMYtFbQ09owGmqmB7TpBUTBPJTSCSE4EKtdkNI2k75yzNKnG4p2kTM6k7s4bcn2TF7cnhL8eHBGx+gkv6MhN9yI9EwQFtuspPXNrEQHIYeMMQAcIi1KJw+kEzbzGWvF2D5sfOi5bKCQ6RuyUwcEPLo96eLabblkFyTpsneoiM/IXKir/ADxQ6wfHLveyAcMcwXq2N6qzcussbF0fG3+4D4c4eK1OybzRVWTDW5n8vEfQ+Caq5VHIXCoKoKbcYZJkyUblMb3BxLvD/JNlN8mI1vmK8rfOGblMUXTdQySyZuEhwHAwfli2aC6LtFFwioRdBQAORQhsxTlNwCA8YRL3TWt/6hr8zhdJPa2M7IWao5Q1Zj4lV/zAOb5QQ82JrT2irnsuT+4ZQ6xmOsfJI3vpMuKOrbxZj26P9+K0NBBBHUKylEO5sbP3FcvyMPodwkcO5sbP3FcvyMPodxm2yL/TNT+3+bVabtfmkPb8iniR9iJ5oRw583UdSOYoJEzqqN1SEL2wiQcsfFKfsNqJ6/xdobmx79HmH4/5hubHFEYfHI14C3Bxa5uSp7ULse1fVBkVqN/LqXbDwkMbdbgPkEHJ8+GKoXQLtpSuRWapvaqeBvhNMFsiObwJJ5dXimMMb/GesB/h/mm5sAT1gH8P803Ni/2lfu8Fogs20xt5GjDx0+KrtNYFnUxygzE/HP8A48F86dpWTUiyBlI5QxlDMP4Bi3IiT8gFjtY67o8w/H/MNzYOjzD8f8w3NigSvmmeXyEuJVhaI4xg0LsYkhpOYjf+vgDg6JqRV7o8w/H/ADDc2NNVbowWgrSpn86nEqXcTaYqmXXUK9ckA5x7BQNgEaTcO8NLdqtlnrGOIc3DMMeMHjIVZt+zZbThZHCRiDjnUtYIpr0nVj+4rj0g650HSdWP7iuPSDrnRt2+tYnRSd0fUqLuSruc3WfRTKgimvSdWP7iuPSDrnQdJ1Y/uK49IOudBvrWJ0UndH1I3JV3ObrPoplQRTXpOrH9xXHpB1zoOk6sf3FcekHXOg31rE6KTuj6kbkq7nN1n0UyoIpr0nVj+4rj0g650HSdWP7iuPSDrnQb61idFJ3R9SNyVdzm6z6KZUEU16Tqx/cVx6Qdc6DpOrH9xXHpB1zoN9axOik7o+pG5Ku5zdZ9FMqCKa9J1Y/uK49IOudB0nVj+4rj0g650G+tYnRSd0fUjclXc5us+imVBFNek6sf3FcekHXOg6Tqx/cVx6Qdc6DfWsTopO6PqRuSruc3WfRTKgimvSdWP7iuPSDrnQdJ1Y/uK49IOudBvrWJ0UndH1I3JV3ObrPoplQRTXpOrH9xXHpB1zoOk6sf3FcekHXOg31rE6KTuj6kbkq7nN1n0UyoIpr0nVj+4rj0g650HSdWP7iuPSDrnQb61idFJ3R9SNyVdzm6z6KZUEU16Tqx/cVx6Qdc6DpOrH9xXHpB1zoN9axOik7o+pG5Ku5zdZ9FMqCKa9J1Y/uK49IOudB0nVj+4rj0g650G+tYnRSd0fUjclXc5us+imVBFNek6sf3FcekHXOg6Tqx/cVx6Qdc6DfWsTopO6PqRuSruc3WfRTVlbdB5MmjdwsDVuqsQii5uBIgmwMb4opLdjS1oSxlNs5BS6jap5o2apItGbFcDt26QEACGVVLq63LvS6/Jmxj6dJ1Y7uK49IOudB0nVj+4rj0g650Uy3r23bvFPA+tbNkR48EAYHHDScrHiU5QWNadmxyNgLcXYZ8Tm8EgFzruVVeCemmtTzI7w5cdobE3jdsHYSJwF8vXDxiMYVFNek6sf3FcekHXOjx0nVju4rj0g6/74tVLsmXfpIhDTwPYwaAGtA/koqW69ozPL5JGkn4n0Uy/igimvSdWP7iuPSDrnQdJ1Y/uK49IOudDnfWsTopO6PqSG5Ku5zdZ9FMqCKa9J1Y/uK49IOudB0nVj+4rj0g650G+rYnRSd0fUjclXc5us+imVBFNek6sf3FcekHXOg6Tqx/cVx6Qdc6DfWsTopO6PqRuSruc3WfRJ3YLSvqmyK6TE5zTylTH9clLlT2LsmRP7gfB1o9jjjZOmZdSgr00BR1R03NU1Zy2dKN1paqGRyikcmJs5OwUxChmDEu+HA0b66Tqx3cVx6Qdf8AfB0nVj+4rj0g650U+W9l1XWnHa8UEjJWHPg1uDsRhnGV8dOlTTLItYUrqR72lp5Sc3VmUy/igimvSdWP7iuPSDrnQdJ1Y/uK49IOudFw31rE6KTuj6lC7kq7nN1n0Uy8eyEO3sbWAsrlavcsPodxtnpOrH9xXHpB1zozy2NpaDs2hNy0m0Ul5ZkCe6tsXWWz7XnydeYcvXn4IqN7NkCzLcsiWgpo3h78MMQMMzgeU8imLIu7VUNayeUjAY6CeQjkX//Z';
+
+/* ============================================================
+   KPI TRIAGE STUDIO
+   Client-side Excel parsing + triage + PDF export
+   ============================================================ */
+
+const STATE = {
+  // Each department = one uploaded file:
+  //   { id, name (derived from filename), fileName, sheets: [{name, kpis: [...]}, ...] }
+  departments: [],
+  filter: 'all',
+};
+
+/* ============================================================
+   SESSION PERSISTENCE
+   Auto-save every change to localStorage so a closed/reloaded
+   browser can resume mid-triage. Survives reloads but is tied
+   to one browser on one machine (not synced across devices).
+   ============================================================ */
+const SESSION_KEY = 'pharr_kpi_triage_v1';
+
+/* ============================================================
+   FOLDER SYNC — File System Access API
+   Lets the user pick their OneDrive KPI folder once. The chosen
+   FileSystemDirectoryHandle is stored in IndexedDB (localStorage
+   can't hold handle objects), so it persists across browser
+   restarts. On subsequent visits, one click re-reads all .xlsx
+   files from the folder — no downloading, no dragging.
+   Requires a Chromium-based browser (Edge, Chrome). Falls back
+   silently to drag-drop when not supported.
+   ============================================================ */
+const FOLDER_DB_NAME = 'pharr_kpi_triage_folder_db';
+const FOLDER_STORE = 'handles';
+const FOLDER_KEY = 'sync_folder';
+
+const folderSyncSupported = typeof window !== 'undefined' &&
+                            'showDirectoryPicker' in window;
+
+function openFolderDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(FOLDER_DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(FOLDER_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveFolderHandle(handle) {
+  const db = await openFolderDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(FOLDER_STORE, 'readwrite');
+    tx.objectStore(FOLDER_STORE).put(handle, FOLDER_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadFolderHandle() {
+  try {
+    const db = await openFolderDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(FOLDER_STORE, 'readonly');
+      const req = tx.objectStore(FOLDER_STORE).get(FOLDER_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    console.warn('Could not load folder handle:', e);
+    return null;
+  }
+}
+
+async function clearFolderHandle() {
+  try {
+    const db = await openFolderDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(FOLDER_STORE, 'readwrite');
+      tx.objectStore(FOLDER_STORE).delete(FOLDER_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { /* ignore */ }
+}
+
+// The browser may forget permission between sessions. Query first, request
+// only if not already granted. Both `queryPermission` and `requestPermission`
+// are on the handle in the current spec.
+async function verifyFolderPermission(handle, requestIfNeeded = true) {
+  const opts = { mode: 'read' };
+  try {
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    if (requestIfNeeded && (await handle.requestPermission(opts)) === 'granted') return true;
+  } catch (e) {
+    console.warn('Permission check failed:', e);
+  }
+  return false;
+}
+
+// Walk the directory and collect all top-level .xlsx files. Doesn't recurse
+// into subfolders — keeps behavior predictable and matches the "flat folder
+// of department files" pattern OSE uses.
+async function readXlsxFilesFromFolder(handle) {
+  const files = [];
+  for await (const entry of handle.values()) {
+    if (entry.kind === 'file' && /\.xlsx$/i.test(entry.name)) {
+      // Skip Excel's temporary lock files (start with ~$)
+      if (entry.name.startsWith('~$')) continue;
+      try {
+        const f = await entry.getFile();
+        files.push(f);
+      } catch (e) {
+        console.warn('Could not read', entry.name, e);
+      }
+    }
+  }
+  // Sort by name for consistent ordering across runs
+  files.sort((a, b) => a.name.localeCompare(b.name));
+  return files;
+}
+
+// Prompt user to pick a folder (fresh selection)
+async function pickFolder() {
+  try {
+    const handle = await window.showDirectoryPicker({
+      id: 'pharr-kpi-folder',
+      mode: 'read',
+      startIn: 'documents',
+    });
+    await saveFolderHandle(handle);
+    await refreshSyncedFolderUI();
+    await loadFilesFromHandle(handle);
+  } catch (e) {
+    if (e.name === 'AbortError') return; // user cancelled the picker
+    console.error('pickFolder failed:', e);
+    alert('Could not open folder: ' + e.message);
+  }
+}
+
+// Called when the user hits "Load from folder" (uses the saved handle)
+async function refreshFromSavedFolder() {
+  const handle = await loadFolderHandle();
+  if (!handle) {
+    // No saved folder — treat as fresh pick
+    return pickFolder();
+  }
+  const ok = await verifyFolderPermission(handle, true);
+  if (!ok) {
+    alert('Permission to read the folder was denied. Click "Change folder" to re-select.');
+    return;
+  }
+  try {
+    await loadFilesFromHandle(handle);
+  } catch (e) {
+    if (e.name === 'NotFoundError' || e.name === 'InvalidStateError') {
+      alert('The synced folder is no longer accessible (moved or deleted). Please pick it again.');
+      await clearFolderHandle();
+      await refreshSyncedFolderUI();
+    } else {
+      console.error('refresh failed:', e);
+      alert('Could not read folder: ' + e.message);
+    }
+  }
+}
+
+// Common path: read .xlsx files from a handle and feed them into the existing
+// handleFiles pipeline (same code path drag-drop uses)
+async function loadFilesFromHandle(handle) {
+  const files = await readXlsxFilesFromFolder(handle);
+  if (files.length === 0) {
+    alert(`No .xlsx files found in "${handle.name}".`);
+    return;
+  }
+  await handleFiles(files);
+  showToast(`Loaded ${files.length} file(s) from "${handle.name}"`);
+}
+
+async function forgetSyncedFolder() {
+  await clearFolderHandle();
+  await refreshSyncedFolderUI();
+  showToast('Folder unlinked. Pick a new one anytime.');
+}
+
+// Update UI (folder-sync fresh vs saved variant, toolbar refresh button)
+async function refreshSyncedFolderUI() {
+  const syncBox = document.getElementById('folder-sync');
+  const freshEl = document.getElementById('folder-sync-fresh');
+  const savedEl = document.getElementById('folder-sync-saved');
+  const nameEl = document.getElementById('synced-folder-name');
+  const toolbarRefresh = document.getElementById('btn-refresh-folder-app');
+  if (!syncBox) return;
+
+  if (!folderSyncSupported) {
+    syncBox.style.display = 'none';
+    if (toolbarRefresh) toolbarRefresh.style.display = 'none';
+    return;
+  }
+  syncBox.style.display = 'block';
+
+  const handle = await loadFolderHandle();
+  if (handle) {
+    freshEl.style.display = 'none';
+    savedEl.style.display = 'flex';
+    nameEl.textContent = handle.name;
+    if (toolbarRefresh) toolbarRefresh.style.display = 'inline-block';
+  } else {
+    freshEl.style.display = 'flex';
+    savedEl.style.display = 'none';
+    if (toolbarRefresh) toolbarRefresh.style.display = 'none';
+  }
+}
+
+
+/* ============================================================
+   THROUGHLINE: per-department selection memory
+   Remembers which KPIs the user has previously selected/overridden/commented
+   for each department, keyed by the file's derived department name (so
+   "HR_FY26.xlsx" and "HR_FY25.xlsx" both share the same memory). When a
+   department file is uploaded, these remembered choices are re-applied on
+   top of the automatic defaults — your monthly workflow becomes "open file,
+   maybe tweak, export" rather than re-triaging from scratch every time.
+   ============================================================ */
+const THROUGHLINE_KEY = 'pharr_kpi_triage_throughline_v1';
+
+function loadThroughline() {
+  try {
+    const raw = localStorage.getItem(THROUGHLINE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+
+function saveThroughline(throughline) {
+  try { localStorage.setItem(THROUGHLINE_KEY, JSON.stringify(throughline)); } catch (e) {}
+}
+
+// Stable key for a department — derived from filename, lowercased & trimmed.
+// "HR_FY26.xlsx" → "hr". This way Sept's "HR_FY25.xlsx" and Oct's "HR_FY26.xlsx"
+// both share memory regardless of user-edited display name.
+function throughlineKey(dept) {
+  const src = dept.fileName || dept.name || '';
+  return deriveDeptName(src).toLowerCase().trim();
+}
+
+// Capture each currently-loaded dept's user-touched KPI state into the throughline
+function updateThroughline() {
+  const throughline = loadThroughline();
+  STATE.departments.forEach(dept => {
+    const key = throughlineKey(dept);
+    if (!key) return;
+    throughline[key] = throughline[key] || {};
+    dept.sheets.forEach(sheet => {
+      sheet.kpis.forEach(k => {
+        // Only remember items the user actually touched (selected/deselected,
+        // overrode status, or wrote a custom comment). This prevents the
+        // memory from snapshotting unintentional defaults.
+        const touched = k._userTouched || !!k.overrideStatus;
+        const customComment = k.comment && k._commentTouched;
+        if (touched || customComment) {
+          const descKey = (k.description || '').toLowerCase().trim();
+          if (!descKey) return;
+          throughline[key][descKey] = {
+            selected: !!k.selected,
+            overrideStatus: k.overrideStatus || null,
+            comment: customComment ? k.comment : null,
+          };
+        }
+      });
+    });
+  });
+  saveThroughline(throughline);
+}
+
+// On file upload: layer the remembered state on top of the automatic defaults
+function applyThroughlineToDept(dept) {
+  const throughline = loadThroughline();
+  const key = throughlineKey(dept);
+  const memory = throughline[key];
+  if (!memory) return 0;
+  let restored = 0;
+  dept.sheets.forEach(sheet => {
+    sheet.kpis.forEach(k => {
+      const descKey = (k.description || '').toLowerCase().trim();
+      const m = memory[descKey];
+      if (m) {
+        k.selected = !!m.selected;
+        if (m.overrideStatus) k.overrideStatus = m.overrideStatus;
+        if (m.comment) { k.comment = m.comment; k._commentTouched = true; }
+        k._userTouched = true;
+        restored++;
+      }
+    });
+  });
+  return restored;
+}
+
+
+let _saveTimer = null;
+function scheduleSave() {
+  // Debounce 400ms so rapid edits (typing in comment) coalesce into one write
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(saveSession, 400);
+}
+
+function saveSession() {
+  if (STATE.departments.length === 0) {
+    clearSavedSession();
+    return;
+  }
+  try {
+    const payload = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      filter: STATE.filter,
+      departments: STATE.departments,
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+    // Also update the cross-session throughline (per-dept selection memory)
+    updateThroughline();
+    updateSavedIndicator();
+  } catch (e) {
+    // localStorage can fail (private browsing, quota exceeded). Don't crash.
+    console.warn('Could not save session:', e);
+  }
+}
+
+function loadSavedSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || data.version !== 1 || !Array.isArray(data.departments)) return null;
+    return data;
+  } catch (e) {
+    console.warn('Could not load saved session:', e);
+    return null;
+  }
+}
+
+function clearSavedSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+  updateSavedIndicator();
+}
+
+// Small UI indicator showing when the session was last auto-saved
+function updateSavedIndicator() {
+  const el = document.getElementById('saved-indicator');
+  if (!el) return;
+  if (STATE.departments.length === 0) {
+    el.textContent = '';
+    return;
+  }
+  el.textContent = 'Auto-saved · just now';
+  // Re-check the timestamp periodically so it stays accurate
+  if (window._savedTickTimer) clearTimeout(window._savedTickTimer);
+  const tick = () => {
+    const data = loadSavedSession();
+    if (!data || !data.savedAt) { el.textContent = ''; return; }
+    el.textContent = `Auto-saved · ${humanTimeSince(data.savedAt)}`;
+    window._savedTickTimer = setTimeout(tick, 30000);  // refresh every 30s
+  };
+  window._savedTickTimer = setTimeout(tick, 30000);
+}
+
+function humanTimeSince(isoTime) {
+  const then = new Date(isoTime).getTime();
+  const seconds = Math.round((Date.now() - then) / 1000);
+  if (seconds < 30) return 'just now';
+  if (seconds < 90) return 'a minute ago';
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min ago`;
+  if (seconds < 7200) return 'an hour ago';
+  if (seconds < 86400) return `${Math.round(seconds / 3600)} hr ago`;
+  return `${Math.round(seconds / 86400)} day(s) ago`;
+}
+
+// Derive a friendly department name from a filename.
+// "IT_FY26.xlsx"         -> "IT"
+// "Parks_FY2026.xlsx"    -> "Parks"
+// "Public Works.xlsx"    -> "Public Works"
+function deriveDeptName(fileName) {
+  let s = String(fileName || '').replace(/\.xlsx$/i, '');
+  // Strip common fiscal-year suffixes: _FY26, _FY2025, -FY25-26, etc.
+  s = s.replace(/[\s_\-]+FY\s*\d{2,4}([\s_\-]*\d{2,4})?$/i, '');
+  // Replace underscores with spaces
+  s = s.replace(/_/g, ' ').trim();
+  return s || 'Department';
+}
+
+/* ----------- Constants ----------- */
+const COLS = { LINK: 1, DESC: 2, METRIC: 5, TARGET: 6, STATUS: 22 };
+const HEADER_ROW = 4;
+const COLOR_MAP = {
+  'FF00B050': 'green',
+  'FFFF0000': 'red',
+  'FFFFFF00': 'yellow',
+};
+const SECTION_MARKERS = [
+  'inputs:', 'outputs:', 'effectiveness measures:', 'efficiency measures:',
+  'fy 25-26 department goals :', 'fy 25-26 department goals:',
+  'fy 24-25 department goals :', 'fy 24-25 department goals:',
+];
+// Keywords that trigger "always include" star (budget rule)
+const ALWAYS_INCLUDE_KEYWORDS = ['budget', 'expenditure', 'cost'];
+
+/* ============================================================
+   UPLOAD HANDLING
+   ============================================================ */
+const uploadZone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('file-input');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('dragging');
+});
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragging');
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFiles(e.target.files);
+  // Reset so the same file can be re-uploaded if needed
+  e.target.value = '';
+});
+
+async function handleFiles(fileList) {
+  const files = Array.from(fileList).filter(f => /\.xlsx$/i.test(f.name));
+  if (files.length === 0) {
+    alert('No .xlsx files found.');
+    return;
+  }
+
+  const failures = [];
+  for (const file of files) {
+    try {
+      const dept = await parseFileToDepartment(file);
+      if (dept.sheets.length === 0) {
+        failures.push(`${file.name}: no KPI scorecards detected`);
+      } else {
+        STATE.departments.push(dept);
+      }
+    } catch (err) {
+      console.error(err);
+      failures.push(`${file.name}: ${err.message}`);
+    }
+  }
+
+  if (STATE.departments.length === 0) {
+    alert('Could not load any departments.\n\n' + failures.join('\n'));
+    return;
+  }
+
+  if (failures.length > 0) {
+    alert('Some files had issues:\n\n' + failures.join('\n'));
+  }
+
+  applyDefaultSelections();
+  document.getElementById('upload-zone').style.display = 'none';
+  document.getElementById('folder-sync').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  updateHeaderDept();
+  render();
+  scheduleSave();
+
+  // If any departments had remembered selections restored from past sessions,
+  // tell the user so they know what's pre-checked vs. what's automatic defaults.
+  const restoredCount = STATE.departments.reduce((sum, d) => sum + (d._throughlineRestored || 0), 0);
+  if (restoredCount > 0) {
+    const dn = STATE.departments.filter(d => d._throughlineRestored).map(d => d.name).join(', ');
+    showToast(`Restored ${restoredCount} previous selection(s) for: ${dn}`);
+    STATE.departments.forEach(d => { delete d._throughlineRestored; });
+  }
+}
+
+// Brief auto-dismissing toast notification (used for throughline restore messages)
+function showToast(message) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = message;
+  el.classList.add('visible');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => el.classList.remove('visible'), 4500);
+}
+
+async function parseFileToDepartment(file) {
+  const buffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const deptId = `dept-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const sheets = [];
+  workbook.eachSheet((ws) => {
+    const layout = detectScorecardLayout(ws);
+    if (!layout) return;
+    const kpis = extractKPIs(ws, layout);
+    // Prefix IDs with dept so multiple departments with same sheet names don't collide
+    kpis.forEach(k => {
+      k.id = `${deptId}::${k.id}`;
+      k.deptId = deptId;
+    });
+    sheets.push({ name: ws.name, kpis });
+  });
+
+  return {
+    id: deptId,
+    name: deriveDeptName(file.name),
+    fileName: file.name,
+    sheets,
+    // Report-level fields, editable per department
+    reportPeriod: defaultReportPeriod(),
+    strengthsCommentary: 'Dept. shows understanding of KPIs and implementation of performance strategies to deliver strong results.',
+    opportunitiesCommentary: 'Opportunities presented above represent points of emphasis for the department.',
+  };
+}
+
+// Default Date of Report to today, in M/D/YY format (matches Pharr template:
+// "Date of Report: 4/16/26"). Editable per department in the Report Settings.
+function defaultReportPeriod() {
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${d.getMonth() + 1}/${d.getDate()}/${yy}`;
+}
+
+function updateHeaderDept() {
+  const el = document.getElementById('dept-name');
+  const n = STATE.departments.length;
+  if (n === 0) { el.textContent = '— No files loaded —'; return; }
+  if (n === 1) { el.textContent = STATE.departments[0].name; return; }
+  el.textContent = `${n} departments`;
+}
+
+/* ============================================================
+   PARSING
+   ============================================================ */
+/* Default column layout for the canonical IT/Bridge template.
+   Used as a fallback when detection finds the headers in expected positions. */
+const DEFAULT_COLS = { LINK: 1, DESC: 2, METRIC: 5, TARGET: 6, STATUS: 22 };
+const DEFAULT_HEADER_ROW = 4;
+
+/* Header-text patterns used for auto-detection. Different departments have
+   slightly different templates; we match these patterns case-insensitively
+   against the contents of every cell in a candidate header row. */
+const HEADER_PATTERNS = {
+  link:   s => /^LINK$/i.test(s),
+  desc:   s => /METRIC DESCRIPTION|KPI DESCRIPTION/i.test(s),
+  metric: s => /^METRIC$/i.test(s),                    // exact "METRIC" — not "METRIC DESCRIPTION"
+  target: s => /^(TARGET|GOAL)$/i.test(s),
+  status: s => /^STATUS$/i.test(s) || /^FY[\s-]?STATUS$/i.test(s),
+};
+
+/* Detect the layout of a scorecard sheet by scanning candidate header rows
+   for the expected header texts. Returns a layout object with column
+   numbers and the header row, or null if the sheet isn't a scorecard.
+
+   This handles:
+   - Header at row 3, 4, 5, or 6 (different department template versions)
+   - Extra columns inserted (e.g. Finance's "ASSIGNED TO:" pushes everything
+     one column right; LINK in B, DESC in C, TARGET in G, STATUS in W)
+   - Slight variations in header text (TARGET vs GOAL, METRIC DESCRIPTION
+     vs KPI DESCRIPTION) */
+function detectScorecardLayout(ws) {
+  const HEADER_ROW_CANDIDATES = [2, 3, 4, 5, 6];
+  const MAX_COL_SCAN = 30;
+  for (const r of HEADER_ROW_CANDIDATES) {
+    const found = {};
+    for (let c = 1; c <= MAX_COL_SCAN; c++) {
+      const v = readCell(ws.getRow(r).getCell(c), ws);
+      if (v == null) continue;
+      const s = String(v).trim();
+      if (!s) continue;
+      for (const [key, pattern] of Object.entries(HEADER_PATTERNS)) {
+        if (found[key] == null && pattern(s)) {
+          found[key] = c;
+          break;
+        }
+      }
+    }
+
+    // Path 1: standard — found an explicit STATUS header
+    if (found.desc && found.target && found.status) {
+      return buildLayout(r, found);
+    }
+    // Path 2: fallback — desc + target found, but column V (or wherever) is
+    // unlabeled. Some Public Health-style templates leave the status header
+    // blank but still drive green/yellow/red via CF rules on a specific column.
+    // Detect that column by counting CF rule density.
+    if (found.desc && found.target) {
+      const cfCol = findColumnWithCFRules(ws);
+      if (cfCol) {
+        return buildLayout(r, { ...found, status: cfCol });
+      }
+    }
+  }
+  return null;
+}
+
+function buildLayout(r, found) {
+  return {
+    headerRow: r,
+    link:   found.link   || Math.max(1, found.desc - 1),
+    desc:   found.desc,
+    metric: found.metric || found.target - 1,
+    target: found.target,
+    status: found.status,
+  };
+}
+
+// Find the column that has the most conditional-formatting rules applied.
+// This is our fallback "status column" detector for spreadsheets where the
+// header row leaves the status cell unlabeled (e.g. Public Health).
+function findColumnWithCFRules(ws) {
+  const cfRules = ws.conditionalFormattings || [];
+  const counts = {};
+  for (const cf of cfRules) {
+    const ref = String(cf.ref || '');
+    // ref can be a single range "V10:V11" or space/comma-separated multiple
+    const refs = ref.split(/[\s,]+/);
+    for (const part of refs) {
+      const m = part.match(/^\$?([A-Z]+)\$?\d+/);
+      if (m) {
+        const col = colLetterToNum(m[1]);
+        counts[col] = (counts[col] || 0) + 1;
+      }
+    }
+  }
+  let best = null, bestCount = 0;
+  for (const [col, count] of Object.entries(counts)) {
+    if (count > bestCount) {
+      bestCount = count;
+      best = parseInt(col, 10);
+    }
+  }
+  return best;
+}
+
+function colLetterToNum(letter) {
+  let n = 0;
+  for (let i = 0; i < letter.length; i++) {
+    n = n * 26 + (letter.charCodeAt(i) - 64);
+  }
+  return n;
+}
+
+// Backwards-compat shim — callers that just want "is this a scorecard?" get yes/no.
+function isScorecardSheet(ws) {
+  return detectScorecardLayout(ws) != null;
+}
+
+function extractKPIs(ws, layout) {
+  layout = layout || {
+    headerRow: DEFAULT_HEADER_ROW,
+    link: DEFAULT_COLS.LINK, desc: DEFAULT_COLS.DESC, metric: DEFAULT_COLS.METRIC,
+    target: DEFAULT_COLS.TARGET, status: DEFAULT_COLS.STATUS,
+  };
+  const kpis = [];
+  let currentSection = 'General';
+  const cfRules = ws.conditionalFormattings || [];
+
+  for (let r = layout.headerRow + 1; r <= ws.rowCount; r++) {
+    const row = ws.getRow(r);
+    const aVal = readCell(row.getCell(layout.link), ws);
+    const bVal = readCell(row.getCell(layout.desc), ws);
+    const eVal = readCell(row.getCell(layout.metric), ws);
+    const fVal = readCell(row.getCell(layout.target), ws);
+    const vCell = row.getCell(layout.status);
+    const vVal = readCell(vCell, ws);
+    // Detect time-formatted status cells so we can format the value properly
+    const vNumFmt = (vCell && (vCell.numFmt || (vCell.style && vCell.style.numFmt))) || '';
+    const isTime = isTimeFormat(vNumFmt);
+
+    // Section detection
+    if (aVal && typeof aVal === 'string') {
+      const aLower = aVal.trim().toLowerCase();
+      if (SECTION_MARKERS.includes(aLower)) {
+        currentSection = toTitleCase(aVal.trim().replace(/:$/, ''));
+        continue;
+      }
+      if (aLower.replace(/\s/g, '').includes('osecalucation') || aLower.includes('calculation row')) {
+        continue;
+      }
+    }
+
+    // Skip blank rows
+    if (!bVal && !eVal) continue;
+    let description = bVal ? String(bVal).trim() : '';
+    const metric = eVal ? String(eVal).trim() : '';
+    if (!description && !metric) continue;
+
+    // Strip trailing punctuation (some spreadsheets leave " -" hanging on OT rows
+    // where the description was meant to be a continuation of the row above)
+    description = description.replace(/[\s\-]+$/, '').trim();
+
+    const target = fVal != null ? String(fVal).trim() : '';
+    const link = aVal ? String(aVal).trim() : '';
+
+    // OT detection: this row may be the OT companion to the previous budget KPI.
+    // Signals: metric column says "- OT" (e.g. "% of budget used - OT") or
+    // description includes "OT" or "Overtime" as a standalone word.
+    const metricSaysOT = /(\s|-)\s*ot\b/i.test(metric);
+    const descSaysOT = /\b(OT|Overtime)\b/i.test(description);
+    const isOTRow = metricSaysOT || descSaysOT;
+
+    if (isOTRow && kpis.length > 0) {
+      const prev = kpis[kpis.length - 1];
+      const prevIsBudget = prev.alwaysInclude && !/\b(OT|Overtime)\b/i.test(prev.description);
+      const closeRows = (r - prev.row) <= 2;
+      if (prevIsBudget && closeRows) {
+        // MERGE: attach OT data to the previous budget KPI rather than creating
+        // a separate row. This matches the user's reporting style where OT %
+        // is mentioned inline within the regular budget row's Performance text.
+        const otIsMonetary = isMonetaryKPI(description, target, vVal);
+        const otIsPercentage = isPercentageKPI(description, metric, target);
+        prev.otValue = vVal;
+        prev.otFormattedValue = (vVal == null || vVal === '')
+          ? null
+          : formatValue(vVal, metric, target, otIsMonetary, isTime, vNumFmt, otIsPercentage);
+        const { status: otStatus } = evaluateStatus(ws, r, layout.status, vVal, cfRules);
+        prev.otStatus = otStatus;
+        // Refresh the Performance text now that we know the OT data
+        const prevNameLower = (prev.description + ' ' + (prev.metric || '')).toLowerCase();
+        prev.comment = defaultPerformanceText(prev.status, prevNameLower, prev.alwaysInclude, prev);
+        continue;
+      }
+    }
+
+    const { status, reason } = evaluateStatus(ws, r, layout.status, vVal, cfRules);
+
+    // Auto-include heuristic for budget-related items
+    const nameLower = (description + ' ' + metric).toLowerCase();
+    const alwaysInclude = ALWAYS_INCLUDE_KEYWORDS.some(k => nameLower.includes(k));
+
+    const hasSubLink = !!link && /\w+\.\d/.test(link);
+    const isMonetary = isMonetaryKPI(description, target, vVal);
+    const isPercentage = isPercentageKPI(description, metric, target);
+
+    const newKpi = {
+      id: `${ws.name}::${r}`,
+      sheet: ws.name,
+      row: r,
+      link,
+      description,
+      metric,
+      target,
+      formattedTarget: formatTarget(target, isMonetary, isPercentage),
+      statusValue: vVal,
+      formattedValue: formatValue(vVal, metric, target, isMonetary, isTime, vNumFmt, isPercentage),
+      status,
+      overrideStatus: null,
+      reason,
+      section: currentSection,
+      alwaysInclude,
+      hasStrategicLink: !!link && link.length > 0 && !isJustNumber(link),
+      hasSubLink,
+      isMonetary,
+      isPercentage,
+      isTime,
+      // OT companion data (populated if a later row is detected as the OT pair)
+      otValue: null,
+      otFormattedValue: null,
+      otStatus: null,
+      selected: false,
+      comment: '',          // filled in below after we have the object
+      showComment: false,
+    };
+    newKpi.comment = defaultPerformanceText(status, nameLower, alwaysInclude, newKpi);
+    kpis.push(newKpi);
+  }
+  return kpis;
+}
+
+
+// Smart starter narrative for the Performance column.
+// Status + KPI category drives which pool of phrasings is used; a hash of the
+// KPI description picks one from the pool — so the same KPI always gets the
+// same starter text (stable across exports), but adjacent KPIs of the same
+// status don't read identically. User edits in the triage UI before exporting.
+const PERF_TEMPLATES = {
+  green_generic: [
+    'The Dept. has exceeded the yearly target.',
+    'Performance is currently exceeding the established target.',
+    'Year-to-date performance has surpassed the established benchmark.',
+    'Department is on track to meet and exceed the target.',
+    'Currently outperforming target expectations.',
+    'Results are above the yearly target; consistent execution recommended.',
+    'Department continues to exceed the established performance target.',
+    'Dept. has exceeded target!',
+  ],
+  green_budget: [
+    'On track to remain under budget.',
+    'Budget utilization is on plan.',
+    'Spending pace remains consistent with the budgeted amount.',
+    'Department is operating within the budgeted threshold.',
+    'Spending pace remains consistent with the budgeted amount. Please continue to monitor and make adjustments as Dept. continues to develop.',
+  ],
+  green_budget_ot: [
+    'OT spending on track with budget.',
+    'Overtime expenditure remains within budget.',
+    'OT utilization is on plan.',
+  ],
+  green_training: [
+    'Currently on track to meet and exceed target.',
+    'Training hours are surpassing the established target.',
+    'Workforce development pace is exceeding expectations.',
+    'Department is on track to exceed the training hours target.',
+    'Dept. has exceeded metric and continues to develop a resilient workforce.',
+  ],
+  green_step: [
+    'The Dept. has met the yearly target. Please make sure to address and update all STEP processes through monthly updates.',
+    'The Dept. has met the yearly target. Please make sure to address and update all STEP processes through monthly updates. Update any accordingly as Dept. continues to develop.',
+  ],
+  green_sop: [
+    'Please make note of any operational changes that occur as the Dept. develops and plan accordingly.',
+  ],
+  green_programs: [
+    'Results are above the yearly target; consistent execution recommended. Great job!',
+    'Results are above the yearly target; consistent performance at delivering career programs for community residents.',
+  ],
+  green_partnerships: [
+    'Results are above the yearly target! Great job at building partnerships and continuing to lead the region.',
+  ],
+  yellow_generic: [
+    'Currently slightly under target. Approaching target threshold; continued focus needed.',
+    'Performance is trending just below target; continued effort will close the gap.',
+    'Approaching target; sustained attention recommended.',
+    'Slight underperformance against the target; on a path to recovery.',
+    'Department is closing in on target; continued focus will deliver results.',
+    'Slight underperformance against the target; almost there!',
+    'Approaching target; sustained attention recommended. Almost at the target goal for fiscal year!',
+  ],
+  yellow_budget: [
+    'Approaching budget threshold. Continued monitoring recommended.',
+    'Spending pace is approaching the budgeted cap; monitor closely.',
+    'Department is nearing the budget threshold; continued oversight advised.',
+  ],
+  yellow_survey: [
+    'Currently slightly under target. Due to limited survey responses per month, performance varies. Keep at it! Almost at target score!',
+    'Performance is close to target. Increased survey responses will support a fuller picture of customer satisfaction.',
+    'Approaching target; sustained survey distribution will help stabilize the score.',
+  ],
+  yellow_training: [
+    'Please keep track of training logs accordingly and update when any training opportunities for staff become available.',
+    'Performance is trending just below target; continued effort will close the gap.',
+  ],
+  yellow_volume: [
+    'Approaching target; keep providing excellent service to the community!',
+  ],
+  red_generic: [
+    'Department is currently below target.',
+    'Currently below target. Recommend review and action plan.',
+    'Performance is below the established target; root-cause analysis is recommended.',
+    'Significant gap to target. Recommend developing a remediation plan.',
+    'Target is not currently being met; further analysis and action are recommended.',
+    'Department is currently below target; review and corrective action recommended.',
+  ],
+  red_budget: [
+    'Dept has surpassed budgeted amount.',
+    'Spending has exceeded the budgeted threshold; review of expenditures recommended.',
+    'Budget overrun observed; recommend evaluating spending categories.',
+  ],
+  red_budget_ot: [
+    'OT spending has surpassed the budgeted amount.',
+    'Overtime expenditure has exceeded the budget; review of scheduling and coverage recommended.',
+    'OT overrun observed; recommend evaluating staffing patterns.',
+  ],
+  red_training: [
+    'Monitor and report accordingly. Currently not on track to meet yearly target; continue to provide learning/training opportunities whenever possible.',
+  ],
+  red_sop: [
+    'Thank you for comments on KPI sheet, please let OSE know current plans for goal and if any assistance is needed.',
+  ],
+};
+
+// Stable string hash → pool index, so a given KPI always picks the same phrase
+function pickTemplate(arr, key) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return arr[Math.abs(h) % arr.length];
+}
+
+function defaultPerformanceText(status, nameLower, alwaysInclude, kpi) {
+  const isBudget = /budget|expenditure/.test(nameLower);
+  const isOT = /\bot\b|overtime/.test(nameLower);
+  const isSurvey = /survey|satisfaction|response/.test(nameLower);
+  const isTraining = /training|workforce|develop a skilled/.test(nameLower);
+  const isStep = /\bstep\b|process improvement/.test(nameLower);
+  const isSOP = /sop|standard operating|operational changes|internal processes/.test(nameLower);
+  const isPrograms = /specialized program|career development/.test(nameLower);
+  const isPartnerships = /partnership|community organization|sister cit/.test(nameLower);
+  const isVolume = /door count|attendance|participants|crossings|visitors/.test(nameLower);
+
+  let bucket;
+  if (status === 'green') {
+    if (isStep) bucket = PERF_TEMPLATES.green_step;
+    else if (isPartnerships) bucket = PERF_TEMPLATES.green_partnerships;
+    else if (isSOP) bucket = PERF_TEMPLATES.green_sop;
+    else if (isPrograms) bucket = PERF_TEMPLATES.green_programs;
+    else if (isBudget && isOT) bucket = PERF_TEMPLATES.green_budget_ot;
+    else if (isBudget) bucket = PERF_TEMPLATES.green_budget;
+    else if (isTraining) bucket = PERF_TEMPLATES.green_training;
+    else bucket = PERF_TEMPLATES.green_generic;
+  } else if (status === 'yellow') {
+    if (isSurvey) bucket = PERF_TEMPLATES.yellow_survey;
+    else if (isBudget) bucket = PERF_TEMPLATES.yellow_budget;
+    else if (isTraining) bucket = PERF_TEMPLATES.yellow_training;
+    else if (isVolume) bucket = PERF_TEMPLATES.yellow_volume;
+    else bucket = PERF_TEMPLATES.yellow_generic;
+  } else if (status === 'red') {
+    if (isSOP) bucket = PERF_TEMPLATES.red_sop;
+    else if (isBudget && isOT) bucket = PERF_TEMPLATES.red_budget_ot;
+    else if (isBudget) bucket = PERF_TEMPLATES.red_budget;
+    else if (isTraining) bucket = PERF_TEMPLATES.red_training;
+    else bucket = PERF_TEMPLATES.red_generic;
+  } else {
+    return '';
+  }
+
+  let base = pickTemplate(bucket, nameLower);
+
+  // OT enrichment: when a budget KPI has an OT companion value, mention it
+  // inline in the same Performance text. This matches the user's actual report
+  // style (e.g. "Budget utilization is on plan. Current OT usage is 17.50%.")
+  if (kpi && kpi.otFormattedValue && kpi.otFormattedValue !== '—') {
+    if (kpi.otStatus === 'red') {
+      base += ` Please note that OT is at ${kpi.otFormattedValue}. Plan and report accordingly.`;
+    } else if (kpi.otStatus === 'yellow') {
+      base += ` Current OT usage is ${kpi.otFormattedValue}; continue to monitor.`;
+    } else if (kpi.otStatus === 'green') {
+      base += ` Current OT usage is ${kpi.otFormattedValue}.`;
+    }
+  }
+
+  return base;
+}
+
+// Read a cell's effective value. ExcelJS exposes cell.result and cell.formula
+// which auto-resolve shared formulas. We prefer cell.result (the cached computed
+// value) when available, falling back to evaluating the formula ourselves.
+function readCell(cell, ws) {
+  if (!cell) return null;
+
+  // If Excel cached a result, use it
+  if (cell.result !== undefined && cell.result !== null) {
+    return unwrapCachedResult(cell.result);
+  }
+
+  // If the cell has a formula (including shared formula resolved with offset),
+  // evaluate it manually
+  if (cell.formula) {
+    return evaluateFormula(cell.formula, ws);
+  }
+
+  // Otherwise just the raw value
+  return valPrimitive(cell.value);
+}
+
+function unwrapCachedResult(r) {
+  if (r == null) return null;
+  if (typeof r === 'object') {
+    if (r.richText) return r.richText.map(x => x.text).join('');
+    if (r.error) return null;  // formula error like #DIV/0!
+    if (r.text !== undefined) return r.text;
+  }
+  return r;
+}
+
+function valPrimitive(v) {
+  if (v == null) return null;
+  if (v instanceof Date) return v;   // Preserve Date so time formatter can use it
+  if (typeof v === 'object') {
+    if (v.richText) return v.richText.map(r => r.text).join('');
+    if (v.text !== undefined) return v.text;
+    return null;
+  }
+  return v;
+}
+
+// Minimal formula evaluator for cases where Excel/LibreOffice didn't cache the result.
+// Supports: direct cell refs (T17), and SUM/AVERAGE/COUNT/MAX/MIN over a range.
+function evaluateFormula(formula, ws) {
+  if (!formula) return null;
+  const f = String(formula).trim().replace(/^=/, '');
+
+  // Direct single-cell reference: T17 or $T$17
+  const refMatch = f.match(/^\$?([A-Z]+)\$?(\d+)$/);
+  if (refMatch) {
+    const cell = ws.getRow(parseInt(refMatch[2])).getCell(colLettersToNum(refMatch[1]));
+    return readCell(cell, ws);  // recurse (cells may chain)
+  }
+
+  // Function call: SUM(H17:S17), AVERAGE(...), etc.
+  const funcMatch = f.match(/^(SUM|AVERAGE|COUNT|COUNTA|MAX|MIN)\(([^)]+)\)$/i);
+  if (funcMatch) {
+    const fn = funcMatch[1].toUpperCase();
+    const rangeStr = funcMatch[2].trim();
+    const values = expandRange(rangeStr, ws);
+    const nums = values.filter(x => typeof x === 'number' && !Number.isNaN(x));
+    if (nums.length === 0) {
+      if (fn === 'COUNT' || fn === 'COUNTA') return 0;
+      return null;
+    }
+    switch (fn) {
+      case 'SUM': return nums.reduce((a, b) => a + b, 0);
+      case 'AVERAGE': return nums.reduce((a, b) => a + b, 0) / nums.length;
+      case 'COUNT': return nums.length;
+      case 'COUNTA': return values.filter(x => x != null && x !== '').length;
+      case 'MAX': return Math.max(...nums);
+      case 'MIN': return Math.min(...nums);
+    }
+  }
+  return null;  // Unsupported formula — caller will treat as no-status
+}
+
+function expandRange(rangeStr, ws) {
+  // Handles "H17:S17" or "H17" (single cell)
+  const parts = rangeStr.split(':').map(s => s.trim().replace(/\$/g, ''));
+  const m1 = parts[0].match(/^([A-Z]+)(\d+)$/);
+  if (!m1) return [];
+  const c1 = colLettersToNum(m1[1]);
+  const r1 = parseInt(m1[2]);
+  if (parts.length === 1) {
+    return [readCell(ws.getRow(r1).getCell(c1), ws)];
+  }
+  const m2 = parts[1].match(/^([A-Z]+)(\d+)$/);
+  if (!m2) return [];
+  const c2 = colLettersToNum(m2[1]);
+  const r2 = parseInt(m2[2]);
+  const out = [];
+  for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) {
+    for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) {
+      out.push(readCell(ws.getRow(r).getCell(c), ws));
+    }
+  }
+  return out;
+}
+
+function isJustNumber(s) {
+  return /^\d+$/.test(String(s).trim());
+}
+
+function toTitleCase(s) {
+  return s.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
+}
+
+/* ----------- CF Evaluation ----------- */
+function evaluateStatus(ws, row, col, value, cfRules) {
+  if (value == null || value === '' ||
+      (typeof value === 'string' && value.trim().toUpperCase() === 'N/A')) {
+    return { status: 'gray', reason: 'No value' };
+  }
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return { status: 'gray', reason: 'Non-numeric' };
+
+  for (const cf of cfRules) {
+    if (!rangeContains(cf.ref, row, col)) continue;
+    // Sort rules by priority
+    const rules = [...(cf.rules || [])].sort((a, b) => (a.priority || 999) - (b.priority || 999));
+    for (const rule of rules) {
+      if (rule.type !== 'cellIs') continue;
+      if (!ruleFires(rule, numeric, ws)) continue;
+      const color = extractFillColor(rule);
+      if (color && COLOR_MAP[color]) {
+        return { status: COLOR_MAP[color], reason: `${rule.operator} ${(rule.formulae || []).join(', ')}` };
+      }
+    }
+  }
+  return { status: 'gray', reason: 'No CF rule matched' };
+}
+
+function rangeContains(refStr, row, col) {
+  // refStr like "V10:V11" or "V10:V11 V13"
+  if (!refStr) return false;
+  const parts = String(refStr).split(/\s+/);
+  for (const part of parts) {
+    const m = part.match(/^([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?$/);
+    if (!m) continue;
+    const minCol = colLettersToNum(m[1]);
+    const minRow = parseInt(m[2]);
+    const maxCol = m[3] ? colLettersToNum(m[3]) : minCol;
+    const maxRow = m[4] ? parseInt(m[4]) : minRow;
+    if (row >= minRow && row <= maxRow && col >= minCol && col <= maxCol) return true;
+  }
+  return false;
+}
+
+function colLettersToNum(letters) {
+  let n = 0;
+  for (const c of letters.toUpperCase()) n = n * 26 + (c.charCodeAt(0) - 64);
+  return n;
+}
+
+function parseFormula(f, ws) {
+  if (f == null) return null;
+  const s = String(f).trim();
+  if (!s) return null;
+  // Percentage literal
+  const pct = s.match(/^(-?\d+(?:\.\d+)?)%$/);
+  if (pct) return parseFloat(pct[1]) / 100;
+  // Plain number
+  const num = parseFloat(s);
+  if (!Number.isNaN(num) && /^-?\d+(\.\d+)?$/.test(s)) return num;
+  // Cell reference like $F$19
+  const ref = s.replace(/\$/g, '');
+  const m = ref.match(/^([A-Z]+)(\d+)$/);
+  if (m) {
+    const cell = ws.getRow(parseInt(m[2])).getCell(colLettersToNum(m[1]));
+    const val = readCell(cell, ws);
+    if (val == null) return null;
+    const n = Number(val);
+    if (!Number.isNaN(n)) return n;
+    // Try to extract number from text like " ≤ 100%"
+    const textNum = String(val).match(/(-?\d+(?:\.\d+)?)/);
+    if (textNum) {
+      let result = parseFloat(textNum[1]);
+      if (String(val).includes('%')) result /= 100;
+      return result;
+    }
+  }
+  return null;
+}
+
+function ruleFires(rule, value, ws) {
+  const formulae = (rule.formulae || []).map(f => parseFormula(f, ws));
+  if (formulae.some(f => f == null)) return false;
+  const op = rule.operator;
+  switch (op) {
+    case 'lessThan': return value < formulae[0];
+    case 'lessThanOrEqual': return value <= formulae[0];
+    case 'greaterThan': return value > formulae[0];
+    case 'greaterThanOrEqual': return value >= formulae[0];
+    case 'equal': return Math.abs(value - formulae[0]) < 1e-9;
+    case 'notEqual': return Math.abs(value - formulae[0]) >= 1e-9;
+    case 'between': {
+      const [lo, hi] = formulae.slice().sort((a, b) => a - b);
+      return value >= lo && value <= hi;
+    }
+    case 'notBetween': {
+      const [lo, hi] = formulae.slice().sort((a, b) => a - b);
+      return value < lo || value > hi;
+    }
+  }
+  return false;
+}
+
+function extractFillColor(rule) {
+  // ExcelJS exposes dxf style under rule.style
+  const style = rule.style || rule;
+  const fill = style.fill || (style.dxf && style.dxf.fill);
+  if (!fill) return null;
+  const candidates = [fill.bgColor, fill.fgColor];
+  for (const c of candidates) {
+    if (!c) continue;
+    const argb = c.argb || c.rgb;
+    if (argb && typeof argb === 'string') return argb.toUpperCase();
+  }
+  return null;
+}
+
+/* ----------- Time-value detection and formatting ----------- */
+// Excel stores times either as Date objects (centered on the Excel epoch
+// 1899-12-30) or as fractions of a day. We detect via the cell number format.
+function isTimeFormat(numFmt) {
+  if (!numFmt) return false;
+  const s = String(numFmt).toLowerCase();
+  // h:mm, h:mm:ss, [h]:mm, mm:ss, h:mm;@, etc.
+  // Avoid matching general "m" (month) or "d" (day) without time context.
+  return /\bh+\b|\[h\]/.test(s) || /\bmm:ss/.test(s) || /\bh:mm/.test(s);
+}
+
+// Format a time value (Date object or fraction-of-day number) to a string.
+// Output style follows the cell's number format:
+//   h:mm    → "7:30"
+//   h:mm:ss → "7:30:07"
+//   mm:ss   → "30:07"
+function formatTime(value, numFmt) {
+  let h, m, s;
+  if (value instanceof Date) {
+    // Excel epoch dates are returned in UTC; pull h/m/s from UTC components
+    h = value.getUTCHours();
+    m = value.getUTCMinutes();
+    s = value.getUTCSeconds();
+  } else if (typeof value === 'number') {
+    // Fraction of a day → total seconds
+    const totalSeconds = Math.round(value * 86400);
+    h = Math.floor(totalSeconds / 3600);
+    m = Math.floor((totalSeconds % 3600) / 60);
+    s = totalSeconds % 60;
+  } else {
+    return String(value);
+  }
+  const fmt = String(numFmt || '').toLowerCase();
+  if (fmt.includes('h') && fmt.includes('s')) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  if (fmt.includes('h')) {
+    return `${h}:${String(m).padStart(2, '0')}`;
+  }
+  if (fmt.includes('m') && fmt.includes('s')) {
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+  // Default fallback: H:MM
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+// Is this KPI a percentage where target & value should display with %?
+// Cues: description or metric mentions "percent" / "%" / "rate" / "compliance"
+// AND the target is a plain decimal 0–1.5 (i.e. fraction form, not "<= 80%").
+// Target text containing % is excluded — that's already-formatted display text.
+function isPercentageKPI(description, metric, target) {
+  const desc = (description || '').toLowerCase();
+  const m = (metric || '').toLowerCase();
+  const tgt = (target == null ? '' : String(target)).toLowerCase();
+  // Target text already has % → it's display-ready, don't reformat
+  if (tgt.includes('%')) return false;
+  // Need some percentage-y signal in the description or metric column
+  const hasPctWord = /(\bpercent\b|%)/.test(desc + ' ' + m);
+  const hasRateWord = /\b(rate|ratio|uptime|compliance|completion)\b/.test(desc + ' ' + m);
+  if (!hasPctWord && !hasRateWord) return false;
+  // Target must parse as a number in the fraction range (0 to 1.5 covers normal
+  // percentages plus a small headroom for "over 100%" rare cases)
+  const n = Number(target);
+  if (Number.isNaN(n)) return false;
+  if (n < 0 || n > 1.5) return false;
+  return true;
+}
+
+/* ----------- Monetary detection and formatting ----------- */
+
+// Is this KPI tracking dollars (vs. percentages, counts, ratios)?
+// Rule: description has a money keyword AND target/value is a large numeric
+// (suggesting raw dollar amount rather than a ratio).
+function isMonetaryKPI(description, target, value) {
+  const desc = (description || '').toLowerCase();
+  const tgt = (target == null ? '' : String(target)).toLowerCase();
+  // % targets are ratios, not dollars
+  if (tgt.includes('%')) return false;
+  // Explicit $ in target wins
+  if (tgt.includes('$')) return true;
+  const moneyDesc = /\b(revenue|sales|earnings|expenditure)\b/.test(desc);
+  if (!moneyDesc) return false;
+  // Confirm with a numeric target or value in a "real dollars" range
+  const tgtNum = Number(target);
+  if (!Number.isNaN(tgtNum) && Math.abs(tgtNum) >= 1000) return true;
+  if (typeof value === 'number' && Math.abs(value) >= 1000) return true;
+  return false;
+}
+
+// Compact currency: $17 mil, $19.1 mil, $850k, $432
+function formatMoney(n) {
+  const num = Number(n);
+  if (Number.isNaN(num)) return String(n);
+  const sign = num < 0 ? '-' : '';
+  const abs = Math.abs(num);
+  if (abs >= 1e9) {
+    const b = abs / 1e9;
+    const r = Math.round(b * 10) / 10;
+    return `${sign}$${Number.isInteger(r) ? r : r.toFixed(1)} bil`;
+  }
+  if (abs >= 1e6) {
+    const m = abs / 1e6;
+    const r = Math.round(m * 10) / 10;
+    return `${sign}$${Number.isInteger(r) ? r : r.toFixed(1)} mil`;
+  }
+  if (abs >= 1e3) return `${sign}$${Math.round(abs / 1e3)}k`;
+  return `${sign}$${Math.round(abs)}`;
+}
+
+// Render the target column. For monetary KPIs with a numeric target, simplify
+// (17000000 → "$17 mil"). For everything else, return the original text so
+// targets like "≤ 100%", "60 training hours/ employee", "1 per year" stay
+// exactly as the department wrote them.
+function formatTarget(target, isMonetary, isPercentage) {
+  if (target == null || target === '') return '';
+  // Percentage KPI with decimal target → "0.9" → "90%", "1" → "100%"
+  if (isPercentage) {
+    const n = Number(target);
+    if (!Number.isNaN(n)) {
+      const pct = n * 100;
+      // Strip trailing zero on whole numbers; one decimal otherwise
+      return Number.isInteger(pct) ? `${pct}%` : `${pct.toFixed(1)}%`;
+    }
+  }
+  if (!isMonetary) return String(target).trim();
+  // Try to parse a number out of the target
+  const raw = String(target).trim();
+  const n = Number(raw);
+  if (!Number.isNaN(n) && raw.length > 0 && /^[\d,.\-\s$]+$/.test(raw)) {
+    return formatMoney(n);
+  }
+  return raw;
+}
+
+/* ----------- Value formatting ----------- */
+function formatValue(v, metric, target, isMonetary, isTime, numFmt, isPercentage) {
+  if (v == null || v === '') return '—';
+  // Time-formatted cells: format as H:MM / H:MM:SS / MM:SS per cell format
+  if (isTime) return formatTime(v, numFmt);
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  // Monetary KPI → compact currency form
+  if (isMonetary) return formatMoney(n);
+  // Percentage KPI → always render as %, regardless of metric/target text shape
+  if (isPercentage) {
+    if (Math.abs(n) <= 10) return `${(n * 100).toFixed(1)}%`;
+    return `${n.toFixed(1)}%`;
+  }
+  const context = `${metric} ${target}`.toLowerCase();
+  const isPct = /%|uptime|rate|percent|phished|complet/.test(context);
+  // Decimal-as-percentage cap: budget overruns can reach 200%+ (1.52 = 152%, 2.34 = 234%).
+  // Any value <= 10 with a % context is treated as decimal form. Values larger
+  // than 10 are assumed to already be in percentage form (e.g., 87 = 87%).
+  if (isPct && Math.abs(n) <= 10) return `${(n * 100).toFixed(1)}%`;
+  if (Math.abs(n) >= 10000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2);
+}
+
+/* ============================================================
+   DEFAULT SELECTION HEURISTIC
+   "Actionable" = has a real target AND (red OR yellow OR always-include OR strategic-linked+green)
+   ============================================================ */
+function isActionable(k) {
+  const hasRealTarget = k.target && !['n/a', 'tbd'].some(x => k.target.toLowerCase().includes(x));
+  if (!hasRealTarget) return false;
+  // Budget/expenditure rows always go in regardless of status
+  if (k.alwaysInclude) return true;
+  // Red and Yellow are always actionable (with real targets)
+  if (k.status === 'red' || k.status === 'yellow') return true;
+  // Green is auto-selected ONLY when tied to a specific strategic sub-goal (SE.3, SG.1.1, etc.)
+  // Greens with just a top-level code (SE alone) or no code are surfaced but not pre-selected.
+  if (k.status === 'green' && k.hasSubLink) return true;
+  return false;
+}
+
+// Returns the status that should be USED for display/PDF/filter purposes.
+// If the user has set an override, that wins; otherwise fall back to the
+// CF-derived original.
+function effectiveStatus(k) {
+  return k.overrideStatus || k.status;
+}
+
+// The 4-state cycle order. Click to advance through: green → yellow → red → gray → green.
+// Shift-click resets to the original CF-derived status (clears the override).
+const STATUS_CYCLE = ['green', 'yellow', 'red', 'gray'];
+function nextStatus(s) {
+  const i = STATUS_CYCLE.indexOf(s);
+  return STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length];
+}
+
+function applyDefaultSelections() {
+  STATE.departments.forEach(d => {
+    d.sheets.forEach(s => {
+      s.kpis.forEach(k => {
+        // Only apply if not already user-touched (so adding more files doesn't reset existing selections)
+        if (k.selected === false && !k._userTouched) {
+          k.selected = isActionable(k);
+        }
+      });
+    });
+    // Layer the throughline (per-dept memory) on top: KPIs the user has touched
+    // in past sessions get their remembered selected/override/comment state.
+    const restored = applyThroughlineToDept(d);
+    if (restored > 0) d._throughlineRestored = restored;
+  });
+}
+
+// Flatten helper: all KPIs across all departments
+function allKPIs() {
+  return STATE.departments.flatMap(d => d.sheets.flatMap(s => s.kpis));
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render() {
+  renderSummaryChips();
+  renderDeptSummary();
+  renderDepartments();
+}
+
+function renderSummaryChips() {
+  const all = allKPIs();
+  const counts = {
+    total: all.length,
+    selected: all.filter(k => k.selected).length,
+    green: all.filter(k => effectiveStatus(k) === 'green').length,
+    yellow: all.filter(k => effectiveStatus(k) === 'yellow').length,
+    red: all.filter(k => effectiveStatus(k) === 'red').length,
+    gray: all.filter(k => effectiveStatus(k) === 'gray').length,
+  };
+  document.getElementById('summary-chips').innerHTML = `
+    <span class="chip selected"><span class="dot"></span>${counts.selected} / ${counts.total} selected</span>
+    <span class="chip green"><span class="dot"></span>${counts.green} green</span>
+    <span class="chip yellow"><span class="dot"></span>${counts.yellow} yellow</span>
+    <span class="chip red"><span class="dot"></span>${counts.red} red</span>
+    <span class="chip gray"><span class="dot"></span>${counts.gray} no status</span>
+  `;
+}
+
+// Department summary strip — only shown in batch mode (2+ departments)
+function renderDeptSummary() {
+  const container = document.getElementById('dept-summary');
+  if (STATE.departments.length < 2) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'grid';
+  container.innerHTML = STATE.departments.map(d => {
+    const kpis = d.sheets.flatMap(s => s.kpis);
+    const strengths = kpis.filter(k => k.selected && effectiveStatus(k) === 'green').length;
+    const opps = kpis.filter(k => k.selected && (effectiveStatus(k) === 'yellow' || effectiveStatus(k) === 'red')).length;
+    const selected = kpis.filter(k => k.selected).length;
+    return `
+      <div class="dept-card" data-dept-id="${escapeHTML(d.id)}">
+        <button class="dept-remove" data-action="remove-dept" data-dept-id="${escapeHTML(d.id)}" title="Remove this department">×</button>
+        <div class="dept-card-name">${escapeHTML(d.name)}</div>
+        <div class="dept-card-meta">${kpis.length} KPIs · ${selected} selected</div>
+        <div class="dept-card-chips">
+          <span class="dept-mini-chip strengths">${strengths} strengths</span>
+          <span class="dept-mini-chip opportunities">${opps} opportunities</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Wire remove buttons
+  container.querySelectorAll('[data-action="remove-dept"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const deptId = btn.dataset.deptId;
+      const dept = STATE.departments.find(d => d.id === deptId);
+      if (dept && confirm(`Remove "${dept.name}" from the builder? This will also clear any comments you've added to its KPIs.`)) {
+        STATE.departments = STATE.departments.filter(d => d.id !== deptId);
+        if (STATE.departments.length === 0) {
+          resetApp();
+        } else {
+          updateHeaderDept();
+          render();
+          scheduleSave();
+        }
+      }
+    });
+  });
+
+  // Clicking card scrolls to that dept's section
+  container.querySelectorAll('.dept-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const target = document.querySelector(`[data-dept-section="${card.dataset.deptId}"]`);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
+
+function renderDepartments() {
+  const container = document.getElementById('sheets-container');
+  container.innerHTML = '';
+  const isMulti = STATE.departments.length > 1;
+
+  STATE.departments.forEach(dept => {
+    const deptSection = document.createElement('div');
+    deptSection.className = 'dept-section';
+    deptSection.dataset.deptSection = dept.id;
+
+    // Only show department header in multi-dept mode — looks cleaner in single-dept
+    if (isMulti) {
+      const header = document.createElement('div');
+      header.className = 'dept-section-header';
+      header.innerHTML = `
+        <h1>${escapeHTML(dept.name)}</h1>
+        <span class="file-tag">${escapeHTML(dept.fileName)}</span>
+      `;
+      deptSection.appendChild(header);
+    }
+
+    // Report settings panel: period, dept name override, bottom commentary
+    const settings = document.createElement('div');
+    settings.className = 'report-settings';
+    settings.innerHTML = `
+      <div class="report-settings-header">Report Settings</div>
+      <div class="report-settings-grid">
+        <label class="rs-field">
+          <span class="rs-label">Department Name (as shown on PDF)</span>
+          <input type="text" class="rs-input" data-field="name" value="${escapeHTML(dept.name)}" />
+        </label>
+        <label class="rs-field">
+          <span class="rs-label">Report Period</span>
+          <input type="text" class="rs-input" data-field="reportPeriod" value="${escapeHTML(dept.reportPeriod)}" placeholder="e.g. May 2026" />
+        </label>
+        <label class="rs-field rs-field-wide">
+          <span class="rs-label">Strengths section commentary <span class="rs-hint">(below the table on the Strengths page)</span></span>
+          <textarea class="rs-textarea" data-field="strengthsCommentary" rows="2">${escapeHTML(dept.strengthsCommentary)}</textarea>
+        </label>
+        <label class="rs-field rs-field-wide">
+          <span class="rs-label">Opportunities section commentary <span class="rs-hint">(below the table on the Opportunities page)</span></span>
+          <textarea class="rs-textarea" data-field="opportunitiesCommentary" rows="2">${escapeHTML(dept.opportunitiesCommentary)}</textarea>
+        </label>
+      </div>
+    `;
+    // Wire field updates
+    settings.querySelectorAll('[data-field]').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const field = e.target.dataset.field;
+        dept[field] = e.target.value;
+        if (field === 'name') updateHeaderDept();
+        scheduleSave();
+      });
+    });
+    deptSection.appendChild(settings);
+
+    dept.sheets.forEach(sheet => {
+      const visible = sheet.kpis.filter(passesFilter);
+      const sheetStrengths = sheet.kpis.filter(k => k.selected && effectiveStatus(k) === 'green').length;
+      const sheetOpps = sheet.kpis.filter(k => k.selected && (effectiveStatus(k) === 'yellow' || effectiveStatus(k) === 'red')).length;
+      const group = document.createElement('div');
+      group.className = 'sheet-group';
+      group.innerHTML = `
+        <div class="sheet-header">
+          <h2>${escapeHTML(sheet.name)}</h2>
+          <div class="sheet-counts">
+            <span class="sheet-chip strengths">${sheetStrengths} strengths</span>
+            <span class="sheet-chip opportunities">${sheetOpps} opportunities</span>
+            <span class="count">${visible.length} of ${sheet.kpis.length} shown</span>
+          </div>
+        </div>
+        <div class="kpi-list"></div>
+      `;
+      const list = group.querySelector('.kpi-list');
+      if (visible.length === 0) {
+        list.innerHTML = '<div class="empty">No KPIs match the current filter.</div>';
+      } else {
+        const order = { red: 0, yellow: 1, green: 2, gray: 3 };
+        visible.sort((a, b) => {
+          const aS = effectiveStatus(a), bS = effectiveStatus(b);
+          if (order[aS] !== order[bS]) return order[aS] - order[bS];
+          if (a.hasStrategicLink !== b.hasStrategicLink) return b.hasStrategicLink - a.hasStrategicLink;
+          return a.row - b.row;
+        });
+        visible.forEach(k => list.appendChild(renderKPI(k)));
+      }
+      deptSection.appendChild(group);
+    });
+
+    container.appendChild(deptSection);
+  });
+}
+
+// Keep old name pointing to new fn for any missed callers
+const renderSheets = renderDepartments;
+
+function renderKPI(k) {
+  const el = document.createElement('div');
+  const effStatus = effectiveStatus(k);
+  const isOverridden = !!k.overrideStatus && k.overrideStatus !== k.status;
+  el.className = `kpi ${effStatus}${k.selected ? ' selected' : ''}${isOverridden ? ' overridden' : ''}`;
+  el.dataset.id = k.id;
+
+  const name = k.description || k.metric;
+  const star = k.alwaysInclude ? '<span class="star" title="Always include (budget rule)">★</span>' : '';
+
+  // Tooltip text on the status badge: explains override behavior and shows original
+  const badgeTooltip = isOverridden
+    ? `Manually reclassified. Original (from spreadsheet): ${k.status === 'gray' ? 'No Status' : k.status}. Click to cycle, Shift+click to reset.`
+    : `Status from spreadsheet's conditional formatting. Click to cycle, Shift+click to reset.`;
+
+  const statusLabel = effStatus === 'gray' ? 'No Status' : effStatus;
+
+  el.innerHTML = `
+    <div class="kpi-check">
+      <input type="checkbox" ${k.selected ? 'checked' : ''} data-action="toggle-select" />
+    </div>
+    <div class="kpi-badges">
+      <button class="status-badge ${effStatus} status-badge-btn" data-action="cycle-status" title="${escapeHTML(badgeTooltip)}">${statusLabel}</button>
+      ${k.link ? `<span class="link-badge">${escapeHTML(k.link)}</span>` : '<span class="link-badge empty">no link</span>'}
+    </div>
+    <div class="kpi-main">
+      <div class="kpi-name">${escapeHTML(name)}${star}</div>
+      <div class="kpi-meta">${escapeHTML(k.section)}<span class="sep">·</span>${escapeHTML(k.metric || '—')}</div>
+    </div>
+    <div>
+      <div class="kpi-value-label">YTD</div>
+      <div class="kpi-value">${escapeHTML(k.formattedValue)}</div>
+    </div>
+    <div>
+      <div class="kpi-target-label">Target</div>
+      <div class="kpi-target">${escapeHTML(k.formattedTarget || k.target || '—')}</div>
+    </div>
+    <div class="kpi-actions">
+      <button class="comment-toggle ${k.comment ? 'has-comment' : ''}" data-action="toggle-comment">
+        ${k.comment ? '✎ Performance' : '+ Performance'}
+      </button>
+    </div>
+    <div class="comment-row ${k.showComment ? 'open' : ''}">
+      <textarea placeholder="Performance commentary shown in the report's Performance column…" data-action="comment-input">${escapeHTML(k.comment)}</textarea>
+    </div>
+  `;
+
+  // Wire up events
+  el.querySelector('[data-action="toggle-select"]').addEventListener('change', (e) => {
+    k.selected = e.target.checked;
+    k._userTouched = true;
+    el.classList.toggle('selected', k.selected);
+    renderSummaryChips();
+    renderDeptSummary();
+    updateSheetCounts();
+    scheduleSave();
+  });
+  el.querySelector('[data-action="toggle-comment"]').addEventListener('click', () => {
+    k.showComment = !k.showComment;
+    const commentRow = el.querySelector('.comment-row');
+    commentRow.classList.toggle('open', k.showComment);
+    if (k.showComment) commentRow.querySelector('textarea').focus();
+  });
+  el.querySelector('[data-action="comment-input"]').addEventListener('input', (e) => {
+    k.comment = e.target.value;
+    k._commentTouched = true;
+    el.querySelector('.comment-toggle').classList.toggle('has-comment', !!k.comment);
+    el.querySelector('.comment-toggle').textContent = k.comment ? '✎ Performance' : '+ Performance';
+    scheduleSave();
+  });
+
+  // Click status badge to cycle: green → yellow → red → gray → green
+  // Shift+click resets to the original CF-derived status.
+  el.querySelector('[data-action="cycle-status"]').addEventListener('click', (e) => {
+    e.preventDefault();
+    if (e.shiftKey) {
+      k.overrideStatus = null;
+    } else {
+      const current = effectiveStatus(k);
+      const next = nextStatus(current);
+      // If the cycle lands on the original CF status, clear override (back to natural state)
+      k.overrideStatus = (next === k.status) ? null : next;
+    }
+    // Auto-select when overriding to a colored status (so the KPI lands on the
+    // appropriate page); auto-deselect when going to gray.
+    const newEff = effectiveStatus(k);
+    if (newEff === 'gray') {
+      k.selected = false;
+    } else if (!k._userTouched || k.overrideStatus) {
+      // Either untouched or the user just made a deliberate override → include
+      k.selected = true;
+    }
+    // Re-render this one row's display in place
+    el.replaceWith(renderKPI(k));
+    renderSummaryChips();
+    renderDeptSummary();
+    updateSheetCounts();
+    scheduleSave();
+  });
+
+  return el;
+}
+
+function passesFilter(k) {
+  switch (STATE.filter) {
+    case 'all': return true;
+    case 'selected': return k.selected;
+    case 'actionable': return isActionable(k);
+    case 'red': return effectiveStatus(k) === 'red';
+    case 'yellow': return effectiveStatus(k) === 'yellow';
+    case 'green': return effectiveStatus(k) === 'green';
+    case 'strategic': return k.hasStrategicLink;
+  }
+  return true;
+}
+
+function escapeHTML(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+/* ============================================================
+   FILTER BUTTONS
+   ============================================================ */
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    STATE.filter = btn.dataset.filter;
+    render();  // Full re-render so sheet-level counts update
+    scheduleSave();
+  });
+});
+
+/* ============================================================
+   LIGHTWEIGHT COUNT UPDATE (avoids full re-render on checkbox click)
+   ============================================================ */
+function updateSheetCounts() {
+  STATE.departments.forEach(dept => {
+    dept.sheets.forEach(sheet => {
+      const deptSection = document.querySelector(`[data-dept-section="${dept.id}"]`);
+      if (!deptSection) return;
+      const headers = deptSection.querySelectorAll('.sheet-header');
+      headers.forEach(h => {
+        const h2 = h.querySelector('h2');
+        if (h2 && h2.textContent === sheet.name) {
+          const visible = sheet.kpis.filter(passesFilter).length;
+          const strengths = sheet.kpis.filter(k => k.selected && effectiveStatus(k) === 'green').length;
+          const opps = sheet.kpis.filter(k => k.selected && (effectiveStatus(k) === 'yellow' || effectiveStatus(k) === 'red')).length;
+          const strengthsEl = h.querySelector('.sheet-chip.strengths');
+          const oppsEl = h.querySelector('.sheet-chip.opportunities');
+          const countEl = h.querySelector('.count');
+          if (strengthsEl) strengthsEl.textContent = `${strengths} strengths`;
+          if (oppsEl) oppsEl.textContent = `${opps} opportunities`;
+          if (countEl) countEl.textContent = `${visible} of ${sheet.kpis.length} shown`;
+        }
+      });
+    });
+  });
+}
+
+/* ============================================================
+   RESET & ADD FILES
+   ============================================================ */
+function resetApp() {
+  STATE.departments = [];
+  STATE.filter = 'all';
+  document.getElementById('dept-name').textContent = '— No files loaded —';
+  document.getElementById('upload-zone').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('dept-summary').style.display = 'none';
+  fileInput.value = '';
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === 'all'));
+  clearSavedSession();
+  // Refresh folder-sync UI (still shows saved handle if one exists — reset only
+  // clears the current triage session, not the "which folder do I sync with" pref)
+  refreshSyncedFolderUI();
+}
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (STATE.departments.length > 0 &&
+      !confirm('Start over? All current files and comments will be cleared.')) return;
+  resetApp();
+});
+
+document.getElementById('btn-add-more').addEventListener('click', () => {
+  fileInput.click();
+});
+
+// Folder sync (File System Access API — Edge/Chrome only, hidden in Firefox/Safari)
+if (folderSyncSupported) {
+  document.getElementById('btn-pick-folder').addEventListener('click', pickFolder);
+  document.getElementById('btn-refresh-folder').addEventListener('click', refreshFromSavedFolder);
+  document.getElementById('btn-refresh-folder-app').addEventListener('click', refreshFromSavedFolder);
+  document.getElementById('btn-change-folder').addEventListener('click', pickFolder);
+  document.getElementById('btn-forget-folder').addEventListener('click', forgetSyncedFolder);
+}
+
+/* ============================================================
+   EXPORT DROPDOWN
+   ============================================================ */
+const exportBtn = document.getElementById('btn-export');
+const exportMenu = document.getElementById('export-menu');
+
+exportBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  exportMenu.classList.toggle('open');
+});
+
+// Close menu when clicking elsewhere
+document.addEventListener('click', (e) => {
+  if (!exportMenu.contains(e.target) && e.target !== exportBtn) {
+    exportMenu.classList.remove('open');
+  }
+});
+
+document.querySelectorAll('.export-option').forEach(opt => {
+  opt.addEventListener('click', async () => {
+    exportMenu.classList.remove('open');
+    const mode = opt.dataset.mode;
+    if (mode === 'combined') {
+      await exportPDF({ mode: 'combined' });
+    } else if (mode === 'separate') {
+      await exportPDF({ mode: 'separate' });
+    }
+  });
+});
+
+/* ============================================================
+   PDF EXPORT — Pharr Strengths & Opportunities Worksheet
+   ============================================================
+   Vector PDF generated with jsPDF text/rect/image primitives.
+   Output matches the City of Pharr Worksheet template:
+     - Navy page background with gold accent bar
+     - "Strengths and Opportunities" header + "Worksheet" subtitle
+     - City of Pharr seal top-right
+     - Department + Date of Report header row
+     - Strengths section (greens) and Opportunities section (yellows+reds)
+     - Editable bottom commentary per section
+     - WE ARE TEAM PHARR footer
+
+   Each section starts on its own page. Tables break cleanly between rows
+   if they overflow. All text is selectable.
+   ============================================================ */
+
+// Pharr brand colors as RGB triplets for jsPDF
+const PHARR_NAVY  = [13, 29, 65];
+const PHARR_GOLD  = [243, 195, 0];
+const STATUS_RGB = {
+  green:  [76, 175, 80],     // matching the sample images
+  yellow: [255, 235, 59],
+  red:    [244, 67, 54],
+  gray:   [180, 180, 180],
+};
+const STATUS_TEXT = {
+  green:  [255, 255, 255],
+  yellow: [13, 29, 65],      // dark text on yellow for legibility
+  red:    [255, 255, 255],
+  gray:   [255, 255, 255],
+};
+
+// Page layout (US Letter, points: 612 x 792)
+const PAGE_W   = 612;
+const PAGE_H   = 792;
+const MARGIN_X = 40;
+const HEADER_H = 110;        // Navy header strip with title + seal
+const FOOTER_H = 90;         // Bottom area with Team Pharr logo
+const CONTENT_TOP   = HEADER_H + 30;
+const CONTENT_BOT   = PAGE_H - FOOTER_H;
+const CONTENT_W     = PAGE_W - 2 * MARGIN_X;
+
+// Table column widths (sum to CONTENT_W)
+// Link | KPI Description | Target | Status | Performance
+const COL_WIDTHS = [60, 140, 90, 80, 162];   // = 532 = CONTENT_W
+const COL_LABELS = ['Link', 'KPI Description', 'Target', 'Status', 'Performance'];
+
+/* ----------- Click handlers (the dropdown wiring is above) ----------- */
+
+async function exportPDF({ mode }) {
+  // Filter: only selected KPIs per department, drop empty depts
+  const deptsWithSelections = STATE.departments
+    .map(d => ({
+      ...d,
+      sheets: d.sheets.map(s => ({
+        name: s.name,
+        kpis: s.kpis.filter(k => k.selected),
+      })).filter(s => s.kpis.length > 0),
+    }))
+    .filter(d => d.sheets.length > 0);
+
+  if (deptsWithSelections.length === 0) {
+    alert('No KPIs are selected for the snapshot.\n\nSelect at least one KPI before exporting.');
+    return;
+  }
+
+  exportBtn.disabled = true;
+  const originalLabel = exportBtn.textContent;
+  exportBtn.textContent = 'Building PDF…';
+
+  try {
+    if (mode === 'combined' || deptsWithSelections.length === 1) {
+      // One PDF containing all selected departments
+      const pdf = buildPharrPDF(deptsWithSelections);
+      pdf.save(buildCombinedFilename(deptsWithSelections));
+    } else {
+      // Separate PDF per department
+      for (let i = 0; i < deptsWithSelections.length; i++) {
+        const dept = deptsWithSelections[i];
+        exportBtn.textContent = `Building PDF… (${i + 1}/${deptsWithSelections.length})`;
+        const pdf = buildPharrPDF([dept]);
+        pdf.save(`${sanitizeFilename(dept.name)}-SOs.pdf`);
+        await new Promise(r => setTimeout(r, 150));
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    alert('PDF export failed: ' + err.message + '\n\nSee browser console for details.');
+  } finally {
+    exportBtn.disabled = false;
+    exportBtn.textContent = originalLabel;
+  }
+}
+
+function buildCombinedFilename(depts) {
+  // Single department exports use the pattern "{Dept}-SOs.pdf" (e.g. Admin-SOs.pdf).
+  // Multi-department combined exports use a count-based name to avoid collisions.
+  if (depts.length === 1) return `${sanitizeFilename(depts[0].name)}-SOs.pdf`;
+  return `${depts.length}_Departments-SOs.pdf`;
+}
+
+function sanitizeFilename(s) {
+  return String(s).replace(/[^\w\s-]/g, '').replace(/\s+/g, '_').slice(0, 60) || 'KPI';
+}
+
+/* ============================================================
+   PDF BUILDER
+   ============================================================ */
+function buildPharrPDF(depts) {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
+  let firstPage = true;
+
+  depts.forEach(dept => {
+    // Bucket KPIs: greens -> Strengths, yellows+reds -> Opportunities
+    const allKpis = dept.sheets.flatMap(s => s.kpis);
+    const strengths    = allKpis.filter(k => effectiveStatus(k) === 'green');
+    const opportunities = allKpis.filter(k => effectiveStatus(k) === 'yellow' || effectiveStatus(k) === 'red');
+
+    let finalY = null;   // where the last-drawn section ended (for signature placement)
+    if (strengths.length > 0) {
+      if (!firstPage) pdf.addPage(); else firstPage = false;
+      finalY = drawSection(pdf, dept, strengths, 'Strengths:', dept.strengthsCommentary);
+    }
+    if (opportunities.length > 0) {
+      if (!firstPage) pdf.addPage(); else firstPage = false;
+      finalY = drawSection(pdf, dept, opportunities, 'Opportunities:', dept.opportunitiesCommentary);
+    }
+    // Signature lines at the end of the last section (Opps if present, else Strengths)
+    if (finalY !== null) {
+      drawSignatureLines(pdf, dept, finalY);
+    }
+  });
+
+  return pdf;
+}
+
+/* ----------- Draw the navy page chrome (header, footer, accent) ----------- */
+function drawPageChrome(pdf, dept) {
+  // Navy fill behind header strip
+  pdf.setFillColor(...PHARR_NAVY);
+  pdf.rect(0, 0, PAGE_W, HEADER_H, 'F');
+
+  // Gold accent bar under header
+  pdf.setFillColor(...PHARR_GOLD);
+  pdf.rect(0, HEADER_H, PAGE_W, 4, 'F');
+
+  // Bottom navy band behind footer
+  pdf.setFillColor(...PHARR_NAVY);
+  pdf.rect(0, PAGE_H - FOOTER_H, PAGE_W, FOOTER_H, 'F');
+
+  // Gold accent bar above footer
+  pdf.setFillColor(...PHARR_GOLD);
+  pdf.rect(0, PAGE_H - FOOTER_H - 4, PAGE_W, 4, 'F');
+
+  // ----- Header title -----
+  // "Strengths and Opportunities" (white, bold, large)
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(26);
+  pdf.text('Strengths and Opportunities', MARGIN_X, 50);
+
+  // "Worksheet" (gold, smaller)
+  pdf.setTextColor(...PHARR_GOLD);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(20);
+  pdf.text('Worksheet', MARGIN_X, 80);
+
+  // ----- City seal (top right corner) -----
+  // 70x70pt placement
+  try {
+    pdf.addImage(PHARR_SEAL_DATA, 'JPEG', PAGE_W - MARGIN_X - 70, 22, 70, 70);
+  } catch (e) {
+    console.warn('Could not add seal image:', e);
+  }
+
+  // ----- Team Pharr footer logo (centered) -----
+  // Logo aspect is 400x159 ≈ 2.5:1. Use 160x64 for footer.
+  try {
+    const logoW = 160, logoH = 64;
+    pdf.addImage(TEAM_PHARR_DATA, 'JPEG', (PAGE_W - logoW) / 2, PAGE_H - FOOTER_H + (FOOTER_H - logoH) / 2, logoW, logoH);
+  } catch (e) {
+    console.warn('Could not add Team Pharr logo:', e);
+  }
+}
+
+/* ----------- Draw the Department + Date metadata box ----------- */
+function drawDeptMetadataBox(pdf, dept, y) {
+  const boxH = 32;
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.5);
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(MARGIN_X, y, CONTENT_W, boxH, 'FD');
+  pdf.line(MARGIN_X + CONTENT_W / 2, y, MARGIN_X + CONTENT_W / 2, y + boxH);
+
+  pdf.setTextColor(...PHARR_NAVY);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(11);
+  pdf.text(safeText(`Department: ${dept.name}`), MARGIN_X + 12, y + 20);
+  pdf.text(safeText(`Date of Report: ${dept.reportPeriod}`), MARGIN_X + CONTENT_W / 2 + 12, y + 20);
+
+  return y + boxH;
+}
+
+/* ----------- Draw the "Strengths:" / "Opportunities:" header bar ----------- */
+function drawSectionBanner(pdf, label, y) {
+  const boxH = 28;
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.5);
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(MARGIN_X, y, CONTENT_W, boxH, 'FD');
+
+  pdf.setTextColor(...PHARR_NAVY);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(12);
+  pdf.text(safeText(label), MARGIN_X + 12, y + 18);
+
+  return y + boxH + 8;
+}
+
+/* ----------- Compute the row height needed for a KPI ----------- */
+function measureRowHeight(pdf, kpi) {
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10);
+  const linkH    = wrapAndMeasure(pdf, safeText(kpi.link || '-'),                COL_WIDTHS[0] - 12, 12);
+  const descH    = wrapAndMeasure(pdf, safeText(kpi.description || kpi.metric), COL_WIDTHS[1] - 12, 12);
+  const targetH  = wrapAndMeasure(pdf, safeText(kpi.formattedTarget || kpi.target || '-'), COL_WIDTHS[2] - 12, 12);
+  const statusH  = wrapAndMeasure(pdf, safeText(kpi.formattedValue || '-'),      COL_WIDTHS[3] - 12, 12);
+  const perfH    = wrapAndMeasure(pdf, safeText(kpi.comment || ''),              COL_WIDTHS[4] - 12, 12);
+  // Tighter base row + tighter padding for better page utilization
+  return Math.max(linkH, descH, targetH, statusH, perfH, 24) + 12;
+}
+
+function wrapAndMeasure(pdf, text, maxWidth, lineH) {
+  if (!text) return 0;
+  const lines = pdf.splitTextToSize(String(text), maxWidth);
+  return lines.length * lineH;
+}
+
+/* ----------- Sanitize text so jsPDF's WinAnsi font can render it ----------- */
+// jsPDF's built-in Helvetica only supports Western European chars. Unicode
+// symbols like ≤ ≥ – — get mangled. Replace them with safe equivalents.
+function safeText(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/≤/g, '<=')
+    .replace(/≥/g, '>=')
+    .replace(/≠/g, '!=')
+    .replace(/–/g, '-')
+    .replace(/—/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/…/g, '...')
+    .replace(/•/g, '*')
+    .replace(/★/g, '*')
+    .replace(/✓/g, 'OK')
+    .replace(/✗/g, 'X');
+}
+
+/* ----------- Draw one table row ----------- */
+function drawRow(pdf, kpi, y, rowH) {
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.5);
+
+  // Pass 1: draw all cell rectangles (status cell gets colored, others white)
+  let x = MARGIN_X;
+  for (let i = 0; i < 5; i++) {
+    if (i === 3) {
+      const fill = STATUS_RGB[effectiveStatus(kpi)] || [255, 255, 255];
+      pdf.setFillColor(...fill);
+    } else {
+      pdf.setFillColor(255, 255, 255);
+    }
+    pdf.rect(x, y, COL_WIDTHS[i], rowH, 'FD');
+    x += COL_WIDTHS[i];
+  }
+
+  // Pass 2: draw all text on top
+  pdf.setFontSize(10);
+  const padding = 6;
+  const lineH = 12;
+
+  const cells = [
+    { text: safeText(kpi.link || '-'),                color: PHARR_NAVY,                            bold: false, center: true },
+    { text: safeText(kpi.description || kpi.metric), color: PHARR_NAVY,                            bold: false, center: true },
+    { text: safeText(kpi.formattedTarget || kpi.target || '-'),              color: PHARR_NAVY,                            bold: false, center: true },
+    { text: safeText(kpi.formattedValue || '-'),      color: STATUS_TEXT[effectiveStatus(kpi)] || PHARR_NAVY, bold: true,  center: true },
+    { text: safeText(kpi.comment || ''),              color: PHARR_NAVY,                            bold: false, center: false },
+  ];
+
+  x = MARGIN_X;
+  cells.forEach((cell, i) => {
+    const w = COL_WIDTHS[i];
+    pdf.setTextColor(...cell.color);
+    pdf.setFont('helvetica', cell.bold ? 'bold' : 'normal');
+
+    const maxW = w - padding * 2;
+    const lines = pdf.splitTextToSize(cell.text, maxW);
+    const textBlockH = lines.length * lineH;
+
+    if (cell.center) {
+      const startY = y + (rowH - textBlockH) / 2 + lineH * 0.75;
+      lines.forEach((ln, li) => {
+        pdf.text(ln, x + w / 2, startY + li * lineH, { align: 'center' });
+      });
+    } else {
+      const startY = y + (rowH - textBlockH) / 2 + lineH * 0.75;
+      lines.forEach((ln, li) => {
+        pdf.text(ln, x + padding, startY + li * lineH);
+      });
+    }
+    x += w;
+  });
+}
+
+/* ----------- Draw column header row ----------- */
+function drawTableHeader(pdf, y) {
+  const rowH = 28;
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.5);
+
+  // Pass 1: draw all cell rectangles with white fill
+  let x = MARGIN_X;
+  COL_LABELS.forEach((label, i) => {
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(x, y, COL_WIDTHS[i], rowH, 'FD');
+    x += COL_WIDTHS[i];
+  });
+
+  // Pass 2: draw all header labels in navy
+  pdf.setTextColor(...PHARR_NAVY);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(11);
+  x = MARGIN_X;
+  COL_LABELS.forEach((label, i) => {
+    pdf.text(label, x + COL_WIDTHS[i] / 2, y + 18, { align: 'center' });
+    x += COL_WIDTHS[i];
+  });
+
+  return y + rowH;
+}
+
+/* ----------- Draw the bottom commentary box ----------- */
+function drawCommentary(pdf, text, y) {
+  if (!text || !text.trim()) return y;
+  const cleaned = safeText(text.trim());
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(11);
+  const padding = 12;
+  const lineH = 14;
+  const lines = pdf.splitTextToSize(cleaned, CONTENT_W - padding * 2);
+  const boxH = Math.max(60, lines.length * lineH + padding * 2);
+
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.5);
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(MARGIN_X, y, CONTENT_W, boxH, 'FD');
+
+  pdf.setTextColor(...PHARR_NAVY);
+  let textY = y + padding + 10;
+  lines.forEach(ln => {
+    pdf.text(ln, MARGIN_X + padding, textY);
+    textY += lineH;
+  });
+
+  return y + boxH;
+}
+
+/* ----------- Draw a full section (Strengths or Opportunities) ----------- */
+function drawSection(pdf, dept, kpis, sectionLabel, commentary) {
+  // First page of this section
+  drawPageChrome(pdf, dept);
+  let y = drawDeptMetadataBox(pdf, dept, CONTENT_TOP);
+  y += 12;
+  y = drawSectionBanner(pdf, sectionLabel, y);
+  y = drawTableHeader(pdf, y);
+
+  // Sort KPIs: reds first within Opportunities, then yellows. Greens by row order.
+  const sorted = [...kpis].sort((a, b) => {
+    const order = { red: 0, yellow: 1, green: 2, gray: 3 };
+    const aS = effectiveStatus(a), bS = effectiveStatus(b);
+    if (order[aS] !== order[bS]) return order[aS] - order[bS];
+    return a.row - b.row;
+  });
+
+  for (const kpi of sorted) {
+    const rowH = measureRowHeight(pdf, kpi);
+
+    // Check whether the row fits on the current page (leaving room for commentary
+    // if this is the last KPI; otherwise just check for the row itself)
+    const isLastKpi = sorted.indexOf(kpi) === sorted.length - 1;
+    const commentaryReserve = isLastKpi && commentary ? 80 : 0;
+
+    if (y + rowH + commentaryReserve > CONTENT_BOT) {
+      // Spill onto a new page — repeat page chrome and table header
+      pdf.addPage();
+      drawPageChrome(pdf, dept);
+      y = drawDeptMetadataBox(pdf, dept, CONTENT_TOP);
+      y += 12;
+      y = drawSectionBanner(pdf, sectionLabel + ' (continued)', y);
+      y = drawTableHeader(pdf, y);
+    }
+
+    drawRow(pdf, kpi, y, rowH);
+    y += rowH;
+  }
+
+  // Bottom commentary box (with a small gap from the table)
+  if (commentary && commentary.trim()) {
+    y += 16;
+    // Need room for commentary box?
+    if (y + 80 > CONTENT_BOT) {
+      pdf.addPage();
+      drawPageChrome(pdf, dept);
+      y = CONTENT_TOP;
+    }
+    y = drawCommentary(pdf, commentary, y);
+  }
+  return y;   // caller uses this to decide where signature lines go
+}
+
+/* ----------- Draw Department Director + Assistant Director signature lines ----------- */
+// Called once per department, after the last section (Opportunities if present,
+// otherwise Strengths). Two side-by-side signature blocks, centered on the page,
+// each with a drawn underline and a centered label beneath. Compact (~30pt tall)
+// so it fits above the footer even on content-heavy pages.
+function drawSignatureLines(pdf, dept, y) {
+  const PAGE_W = 612;
+  const CENTER_X = PAGE_W / 2;
+  const LINE_WIDTH = 200;         // underline length per block
+  const COLUMN_GAP = 40;          // horizontal gap between the two blocks
+  const LABEL_GAP = 14;           // vertical gap from underline to label
+  const SIG_BLOCK_HEIGHT = 20;    // underline + gap + label
+  const GAP_ABOVE_CONTENT = 20;   // minimum vertical gap above signatures
+  const GAP_ABOVE_FOOTER = 30;    // minimum vertical gap below signatures
+
+  // Preferred position — a consistent visual baseline when content is short
+  const PREFERRED_SIG_Y = 620;
+  const MAX_SIG_Y = CONTENT_BOT - SIG_BLOCK_HEIGHT - GAP_ABOVE_FOOTER;
+
+  // Compute actual y: sit below content if content extends past preferred,
+  // but never push into the footer band
+  let sigY = Math.max(y + GAP_ABOVE_CONTENT, PREFERRED_SIG_Y);
+  sigY = Math.min(sigY, MAX_SIG_Y);
+
+  // Horizontal layout — two blocks centered as a pair
+  const totalWidth = LINE_WIDTH * 2 + COLUMN_GAP;
+  const leftLineStart = CENTER_X - totalWidth / 2;
+  const leftLineEnd = leftLineStart + LINE_WIDTH;
+  const rightLineStart = leftLineEnd + COLUMN_GAP;
+  const rightLineEnd = rightLineStart + LINE_WIDTH;
+  const leftLineCenter = (leftLineStart + leftLineEnd) / 2;
+  const rightLineCenter = (rightLineStart + rightLineEnd) / 2;
+
+  // Draw underlines
+  pdf.setDrawColor(...PHARR_NAVY);
+  pdf.setLineWidth(0.6);
+  pdf.line(leftLineStart, sigY, leftLineEnd, sigY);
+  pdf.line(rightLineStart, sigY, rightLineEnd, sigY);
+
+  // Draw centered labels beneath each underline
+  pdf.setTextColor(...PHARR_NAVY);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10);
+  pdf.text('Department Director Signature', leftLineCenter, sigY + LABEL_GAP, { align: 'center' });
+  pdf.text('Assistant Director Signature', rightLineCenter, sigY + LABEL_GAP, { align: 'center' });
+}
+
+/* ============================================================
+   INIT: check for a saved session and offer to restore
+   ============================================================ */
+(function initRestoreBanner() {
+  const saved = loadSavedSession();
+  if (!saved) return;
+  const banner = document.getElementById('restore-banner');
+  const meta = document.getElementById('restore-banner-meta');
+  const totalKpis = saved.departments.reduce((sum, d) =>
+    sum + d.sheets.reduce((s, sh) => s + sh.kpis.length, 0), 0);
+  const selectedKpis = saved.departments.reduce((sum, d) =>
+    sum + d.sheets.reduce((s, sh) => s + sh.kpis.filter(k => k.selected).length, 0), 0);
+  meta.textContent = `${saved.departments.length} department(s) · ${selectedKpis} of ${totalKpis} KPIs selected · saved ${humanTimeSince(saved.savedAt)}`;
+  banner.style.display = 'flex';
+
+  document.getElementById('btn-restore-saved').addEventListener('click', () => {
+    STATE.departments = saved.departments;
+    STATE.filter = saved.filter || 'all';
+    banner.style.display = 'none';
+    document.getElementById('upload-zone').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    updateHeaderDept();
+    // Restore the active filter button visual state
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === STATE.filter));
+    render();
+    updateSavedIndicator();
+  });
+  document.getElementById('btn-discard-saved').addEventListener('click', () => {
+    clearSavedSession();
+    banner.style.display = 'none';
+  });
+})();
+
+// Show the folder-sync UI once DOM is ready (shows the "Load from folder" button
+// on browsers that support the API, or the "Synced folder: X" panel if we've
+// already been granted access to one)
+refreshSyncedFolderUI();
+
+</script>
+
+</body>
+</html>
