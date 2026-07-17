@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="Ozzy-Icon.png">
 <title>Strengths & Opportunities Report Builder</title>
+<link rel="icon" type="image/png" sizes="32x32" href="Ozzy-Icon.png">
 
 <!-- Fonts: Montserrat (Gotham Bold substitute) + JetBrains Mono for metadata -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -110,6 +110,280 @@
     margin: 0 auto;
     padding: 32px 40px 80px;
   }
+
+  /* ---------- VIEW-MODE TOGGLE ---------- */
+  .view-mode-toggle {
+    display: inline-flex;
+    background: #EFF3F8;
+    border-radius: 6px;
+    padding: 3px;
+    gap: 2px;
+    margin-right: 12px;
+  }
+  .view-mode-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  .view-mode-btn:hover { color: var(--ink); }
+  .view-mode-btn.active {
+    background: var(--ink);
+    color: white;
+  }
+
+  /* ---------- DASHBOARD ---------- */
+  .dashboard-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .dashboard-breadcrumbs button {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    color: var(--ink);
+    cursor: pointer;
+    font-weight: 500;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: inherit;
+  }
+  .dashboard-breadcrumbs button:hover { background: #EFF3F8; }
+  .dashboard-breadcrumbs .separator { color: var(--ink-4); }
+  .dashboard-breadcrumbs .current { color: var(--ink); font-weight: 600; }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .dashboard-dept-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .dashboard-dept-card:hover {
+    border-color: var(--ink-3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 29, 65, 0.08);
+  }
+  .dashboard-dept-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .dashboard-dept-card-meta {
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dashboard-dept-card-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .dashboard-dept-card-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dashboard-dept-card-chip.green { background: var(--green-soft); color: var(--green); }
+  .dashboard-dept-card-chip.yellow { background: var(--yellow-soft); color: var(--yellow); }
+  .dashboard-dept-card-chip.red { background: var(--red-soft); color: var(--red); }
+  .dashboard-dept-card-chip.gray { background: var(--gray-soft); color: var(--gray); }
+
+  /* KPI cards in the detail view */
+  .dashboard-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 16px;
+  }
+  .dashboard-kpi-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-left-width: 4px;
+    border-radius: 4px;
+    padding: 16px 18px;
+  }
+  .dashboard-kpi-card.green { border-left-color: var(--green); }
+  .dashboard-kpi-card.yellow { border-left-color: var(--yellow); }
+  .dashboard-kpi-card.red { border-left-color: var(--red); }
+  .dashboard-kpi-card.gray { border-left-color: var(--gray); }
+
+  .dashboard-kpi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .dashboard-kpi-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.35;
+    flex: 1;
+  }
+  .dashboard-kpi-link {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #EFF3F8;
+    color: var(--ink-2);
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  .dashboard-kpi-primary {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .dashboard-kpi-primary .label {
+    font-size: 11px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .dashboard-kpi-primary .value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dashboard-kpi-primary .target {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dashboard-progress {
+    height: 4px;
+    background: #EFF3F8;
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 8px 0 4px 0;
+  }
+  .dashboard-progress-fill {
+    height: 100%;
+    background: var(--ink);
+    transition: width 0.3s ease;
+  }
+  .dashboard-progress-fill.green { background: var(--green); }
+  .dashboard-progress-fill.yellow { background: var(--yellow); }
+  .dashboard-progress-fill.red { background: var(--red); }
+  .dashboard-progress-label {
+    font-size: 10px;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+  }
+
+  .dashboard-kpi-deltas {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .dashboard-delta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    gap: 8px;
+  }
+  .dashboard-delta-row .delta-label {
+    color: var(--ink-3);
+    flex-shrink: 0;
+  }
+  .dashboard-delta-row .delta-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  .dashboard-delta-row .delta-arrow {
+    font-size: 14px;
+    line-height: 1;
+    font-weight: 700;
+  }
+  .dashboard-delta-row .delta-arrow.good { color: var(--green); }
+  .dashboard-delta-row .delta-arrow.bad { color: var(--red); }
+  .dashboard-delta-row .delta-arrow.flat { color: var(--ink-4); }
+
+  .dashboard-projection {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-size: 12px;
+    color: var(--ink-2);
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .dashboard-projection .proj-label { color: var(--ink-3); }
+  .dashboard-projection .proj-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* OT companion row (budget KPIs with OT variant merged in) */
+  .dashboard-ot-row {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .dashboard-ot-row .ot-label {
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .dashboard-ot-row .ot-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+  }
+  .dashboard-ot-row .ot-dot { font-size: 10px; line-height: 1; }
+  .dashboard-ot-row .ot-value.green { color: var(--green); }
+  .dashboard-ot-row .ot-value.yellow { color: var(--yellow); }
+  .dashboard-ot-row .ot-value.red { color: var(--red); }
+  .dashboard-ot-row .ot-value.gray { color: var(--gray); }
 
   /* ---------- RESTORE BANNER (shown when there's a saved session) ---------- */
   .restore-banner {
@@ -921,6 +1195,10 @@
 
     <div class="toolbar">
       <div class="toolbar-left">
+        <div class="view-mode-toggle" id="view-mode-toggle">
+          <button class="view-mode-btn active" data-mode="triage">📋 Triage</button>
+          <button class="view-mode-btn" data-mode="dashboard">📊 Live Dashboard</button>
+        </div>
         <div class="summary-chips" id="summary-chips"></div>
       </div>
       <div style="display: flex; gap: 12px; align-items: center;">
@@ -947,18 +1225,26 @@
     <!-- Department summary strip (batch mode only) -->
     <div id="dept-summary" class="dept-summary" style="display: none;"></div>
 
-    <div class="filters">
-      <span class="filter-label">Filter</span>
-      <button class="filter-btn active" data-filter="all">All</button>
-      <button class="filter-btn" data-filter="selected">Selected</button>
-      <button class="filter-btn" data-filter="actionable">Actionable</button>
-      <button class="filter-btn" data-filter="red">Red</button>
-      <button class="filter-btn" data-filter="yellow">Yellow</button>
-      <button class="filter-btn" data-filter="green">Green</button>
-      <button class="filter-btn" data-filter="strategic">With Strategic Link</button>
+    <!-- TRIAGE VIEW -->
+    <div id="triage-view">
+      <div class="filters">
+        <span class="filter-label">Filter</span>
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="selected">Selected</button>
+        <button class="filter-btn" data-filter="actionable">Actionable</button>
+        <button class="filter-btn" data-filter="red">Red</button>
+        <button class="filter-btn" data-filter="yellow">Yellow</button>
+        <button class="filter-btn" data-filter="green">Green</button>
+        <button class="filter-btn" data-filter="strategic">With Strategic Link</button>
+      </div>
+
+      <div id="sheets-container"></div>
     </div>
 
-    <div id="sheets-container"></div>
+    <!-- DASHBOARD VIEW -->
+    <div id="dashboard-view" style="display: none;">
+      <div id="dashboard-content"></div>
+    </div>
   </div>
 </main>
 
@@ -975,8 +1261,8 @@ const PHARR_SEAL_DATA = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD
 const TEAM_PHARR_DATA = 'data:image/jpeg;base64,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';
 
 /* ============================================================
-   KPI TRIAGE STUDIO
-   Client-side Excel parsing + triage + PDF export
+   KPI SOs STUDIO — Strengths & Opportunities Report Builder
+   Client-side Excel parsing + triage + PDF export + live dashboard
    ============================================================ */
 
 const STATE = {
@@ -984,6 +1270,8 @@ const STATE = {
   //   { id, name (derived from filename), fileName, sheets: [{name, kpis: [...]}, ...] }
   departments: [],
   filter: 'all',
+  viewMode: 'triage',    // 'triage' | 'dashboard'
+  dashboardDeptId: null, // when viewMode === 'dashboard', which dept is drilled into (null = landing grid)
 };
 
 /* ============================================================
@@ -1285,6 +1573,8 @@ function saveSession() {
       version: 1,
       savedAt: new Date().toISOString(),
       filter: STATE.filter,
+      viewMode: STATE.viewMode,
+      dashboardDeptId: STATE.dashboardDeptId,
       departments: STATE.departments,
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
@@ -1541,40 +1831,71 @@ const HEADER_PATTERNS = {
 function detectScorecardLayout(ws) {
   const HEADER_ROW_CANDIDATES = [2, 3, 4, 5, 6];
   const MAX_COL_SCAN = 30;
+  const MONTH_ABBREV = ['OCT','NOV','DEC','JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP'];
+  // FY XX-YY YTD (ACTUAL) — used for current-year and prior-year YTD columns
+  const YTD_ACTUAL_RE = /FY\s*(\d{2})[\s-]*(\d{2})\s*(?:\r?\n)?\s*(?:YTD)?\s*\(?ACTUAL\)?/i;
+
   for (const r of HEADER_ROW_CANDIDATES) {
     const found = {};
+    const ytdCols = [];   // { col, year, header }
+    const monthlyCols = {};   // { OCT: col, NOV: col, ... }
+
     for (let c = 1; c <= MAX_COL_SCAN; c++) {
       const v = readCell(ws.getRow(r).getCell(c), ws);
       if (v == null) continue;
       const s = String(v).trim();
       if (!s) continue;
+
+      // Basic scorecard headers
       for (const [key, pattern] of Object.entries(HEADER_PATTERNS)) {
         if (found[key] == null && pattern(s)) {
           found[key] = c;
           break;
         }
       }
+
+      // FY YTD columns (multiple possible — sorted by year later)
+      const ytdMatch = s.match(YTD_ACTUAL_RE);
+      if (ytdMatch) {
+        ytdCols.push({ col: c, year: parseInt(ytdMatch[1], 10), header: s });
+      }
+
+      // Monthly columns
+      const upper = s.toUpperCase().trim();
+      for (const abbrev of MONTH_ABBREV) {
+        if (upper === abbrev) {
+          monthlyCols[abbrev] = c;
+          break;
+        }
+      }
     }
+
+    // Sort YTD columns by year (ascending). Current year = latest, prior = earlier
+    ytdCols.sort((a, b) => a.year - b.year);
+    const curYtdCol = ytdCols.length > 0 ? ytdCols[ytdCols.length - 1].col : null;
+    const pfyYtdCol = ytdCols.length > 1 ? ytdCols[ytdCols.length - 2].col : null;
 
     // Path 1: standard — found an explicit STATUS header
     if (found.desc && found.target && found.status) {
-      return buildLayout(r, found);
+      return buildLayout(r, found, curYtdCol, pfyYtdCol, monthlyCols);
     }
     // Path 2: fallback — desc + target found, but column V (or wherever) is
-    // unlabeled. Some Public Health-style templates leave the status header
-    // blank but still drive green/yellow/red via CF rules on a specific column.
-    // Detect that column by counting CF rule density.
+    // unlabeled. Detect the status column via CF rule density.
     if (found.desc && found.target) {
       const cfCol = findColumnWithCFRules(ws);
       if (cfCol) {
-        return buildLayout(r, { ...found, status: cfCol });
+        return buildLayout(r, { ...found, status: cfCol }, curYtdCol, pfyYtdCol, monthlyCols);
+      }
+      // Path 3: no status column at all — use current YTD as the status source
+      if (curYtdCol) {
+        return buildLayout(r, { ...found, status: curYtdCol }, curYtdCol, pfyYtdCol, monthlyCols);
       }
     }
   }
   return null;
 }
 
-function buildLayout(r, found) {
+function buildLayout(r, found, curYtdCol, pfyYtdCol, monthlyCols) {
   return {
     headerRow: r,
     link:   found.link   || Math.max(1, found.desc - 1),
@@ -1582,6 +1903,10 @@ function buildLayout(r, found) {
     metric: found.metric || found.target - 1,
     target: found.target,
     status: found.status,
+    // NEW: dashboard-relevant columns
+    curYtd: curYtdCol || found.status,   // fall back to status col if only one YTD found
+    pfyYtd: pfyYtdCol,                    // may be null if no prior year data present
+    monthly: monthlyCols,                 // {OCT: col, NOV: col, ...} — may be partial
   };
 }
 
@@ -1713,6 +2038,24 @@ function extractKPIs(ws, layout) {
     const isMonetary = isMonetaryKPI(description, target, vVal);
     const isPercentage = isPercentageKPI(description, metric, target);
 
+    // Read the DASHBOARD-relevant fields:
+    // - prior fiscal year YTD (from FY 24-25 YTD ACTUAL column)
+    // - each monthly cell (OCT..SEP)
+    let pfyYtdValue = null;
+    if (layout.pfyYtd) {
+      const raw = readCell(row.getCell(layout.pfyYtd), ws);
+      pfyYtdValue = (raw == null || raw === '' || raw === 'N/A') ? null : raw;
+    }
+    const monthlyValues = {};
+    if (layout.monthly) {
+      for (const [month, col] of Object.entries(layout.monthly)) {
+        const raw = readCell(row.getCell(col), ws);
+        if (raw != null && raw !== '' && raw !== 'N/A') {
+          monthlyValues[month] = raw;
+        }
+      }
+    }
+
     const newKpi = {
       id: `${ws.name}::${r}`,
       sheet: ws.name,
@@ -1734,12 +2077,15 @@ function extractKPIs(ws, layout) {
       isMonetary,
       isPercentage,
       isTime,
+      // Dashboard fields
+      pfyYtdValue,             // prior FY YTD (raw value, may be null)
+      monthlyValues,           // {OCT: v, NOV: v, ...} — only months with data
       // OT companion data (populated if a later row is detected as the OT pair)
       otValue: null,
       otFormattedValue: null,
       otStatus: null,
       selected: false,
-      comment: '',          // filled in below after we have the object
+      comment: '',
       showComment: false,
     };
     newKpi.comment = defaultPerformanceText(status, nameLower, alwaysInclude, newKpi);
@@ -2349,12 +2695,369 @@ function allKPIs() {
 }
 
 /* ============================================================
+   DASHBOARD HELPERS
+   Data derivations used by the Live Dashboard view: direction
+   inference, cumulative-vs-monthly shape detection, MoM/YoY
+   deltas with color-coded arrows, projected EOY, and formatting.
+   ============================================================ */
+
+const MONTHS_FY = ['OCT','NOV','DEC','JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP'];
+
+// Determine which direction is "better" for this KPI. Drives arrow colors.
+// Returns 'higher' | 'lower' | 'neutral'.
+function inferKpiDirection(k) {
+  const tgt = String(k.target || '').toLowerCase();
+  const combined = ((k.description || '') + ' ' + (k.metric || '')).toLowerCase();
+  // Explicit target symbols beat contextual guesses
+  if (/[<≤]=?|\bunder\b|\bbelow\b|\bless than\b|\bno more than\b/.test(tgt)) return 'lower';
+  if (/[>≥]=?|\bover\b|\babove\b|\bat least\b|\bmore than\b/.test(tgt)) return 'higher';
+  // "Percent of X reported/completed/answered/resolved within..." — reporting
+  // activity is positive, so higher is better even though the underlying event
+  // (injury, complaint) sounds negative. This check MUST come before the
+  // negative-event check below.
+  if (/\b(percent|% of).*(reported|completed|answered|resolved|processed|acknowledged)/.test(combined)) {
+    return 'higher';
+  }
+  // Contextual cues — undesirable events / costs
+  if (/\b(response time|wait time|delay|error|complaint|violation|injuries|injury|absence|turnover|overrun|overtime.*budget|expenditure.*OT|budget|expenditure)\b/.test(combined)) {
+    return 'lower';
+  }
+  if (/\b(revenue|sales|earnings|training|attendance|participation|completion|satisfaction|programs|specialized|door count|partnerships|reported|acknowledged)\b/.test(combined)) {
+    return 'higher';
+  }
+  return 'higher';   // safe default
+}
+
+// Is this KPI cumulative (YTD grows month-over-month) or a per-month rate?
+// Uses metric text cues first; falls back to monotonicity of monthly values.
+function inferKpiShape(k) {
+  const metric = String(k.metric || '').toLowerCase();
+  const desc = String(k.description || '').toLowerCase();
+  const combined = metric + ' ' + desc;
+  if (/\b(per\s*month|monthly|average|avg\.?|response time|wait time|uptime|rate)\b/.test(combined)) return 'monthly';
+  if (/\b(total|cumulative|year[ -]?to[ -]?date|ytd|\$\s*per\s*year|per\s*year)\b/.test(combined)) return 'cumulative';
+  // Data-shape fallback: if the values only ever grow, it's cumulative
+  const vals = MONTHS_FY.map(m => k.monthlyValues && k.monthlyValues[m])
+                        .filter(v => typeof v === 'number' && !Number.isNaN(v));
+  if (vals.length >= 3) {
+    let strictlyNonDecreasing = true;
+    for (let i = 1; i < vals.length; i++) {
+      if (vals[i] < vals[i - 1] - 1e-6) { strictlyNonDecreasing = false; break; }
+    }
+    return strictlyNonDecreasing ? 'cumulative' : 'monthly';
+  }
+  return 'cumulative';
+}
+
+// Number of months with real data (used for MoM and projections)
+function monthsWithData(k) {
+  if (!k.monthlyValues) return 0;
+  return MONTHS_FY.filter(m => {
+    const v = k.monthlyValues[m];
+    return typeof v === 'number' && !Number.isNaN(v);
+  }).length;
+}
+
+// Latest month name with data ("MAY", "JUN"...), or null
+function latestMonthWithData(k) {
+  if (!k.monthlyValues) return null;
+  let latest = null;
+  for (const m of MONTHS_FY) {
+    const v = k.monthlyValues[m];
+    if (typeof v === 'number' && !Number.isNaN(v)) latest = m;
+  }
+  return latest;
+}
+
+// Month-over-month change: current month's value minus previous month's value
+// Returns {latestMonth, previousMonth, latestValue, previousValue, delta} or null
+function computeMoM(k) {
+  if (!k.monthlyValues) return null;
+  let latestIdx = -1;
+  for (let i = MONTHS_FY.length - 1; i >= 0; i--) {
+    const v = k.monthlyValues[MONTHS_FY[i]];
+    if (typeof v === 'number' && !Number.isNaN(v)) { latestIdx = i; break; }
+  }
+  if (latestIdx <= 0) return null;
+  const prevIdx = latestIdx - 1;
+  const prev = k.monthlyValues[MONTHS_FY[prevIdx]];
+  if (typeof prev !== 'number' || Number.isNaN(prev)) return null;
+  const latest = k.monthlyValues[MONTHS_FY[latestIdx]];
+  return {
+    latestMonth: MONTHS_FY[latestIdx],
+    previousMonth: MONTHS_FY[prevIdx],
+    latestValue: latest,
+    previousValue: prev,
+    delta: latest - prev,
+  };
+}
+
+// Year-over-year at same point: current YTD minus prior FY YTD
+function computeYoY(k) {
+  const cur = Number(k.statusValue);
+  const prev = Number(k.pfyYtdValue);
+  if (Number.isNaN(cur) || Number.isNaN(prev) || k.statusValue == null || k.pfyYtdValue == null) return null;
+  return { current: cur, prior: prev, delta: cur - prev };
+}
+
+// Projected end-of-year for cumulative KPIs: (YTD / months elapsed) * 12.
+// For monthly-shape KPIs, "projection" is just the latest value (no annualization).
+function computeProjectedEOY(k) {
+  const cur = Number(k.statusValue);
+  if (Number.isNaN(cur) || k.statusValue == null) return null;
+  const monthsFilled = monthsWithData(k);
+  const shape = inferKpiShape(k);
+  if (shape === 'monthly') return { value: cur, method: 'latest' };
+  if (monthsFilled < 1) return null;
+  return { value: (cur * 12) / monthsFilled, method: 'annualized', monthsUsed: monthsFilled };
+}
+
+// Format a number using the same rules the KPI uses for its statusValue
+// (percentage / monetary / time / plain). Delegates to formatValue.
+function formatKpiNumber(k, n) {
+  if (n == null || n === '' || Number.isNaN(Number(n))) return '—';
+  return formatValue(n, k.metric, k.target, k.isMonetary, k.isTime, '', k.isPercentage);
+}
+
+// Format a delta (can be negative). Same rules as formatKpiNumber but keeps sign.
+function formatKpiDelta(k, n) {
+  if (n == null || Number.isNaN(Number(n))) return '—';
+  const sign = n > 0 ? '+' : (n < 0 ? '−' : '');
+  const abs = Math.abs(n);
+  const formatted = formatValue(abs, k.metric, k.target, k.isMonetary, k.isTime, '', k.isPercentage);
+  return sign + formatted;
+}
+
+// Determine arrow ({direction: 'up'|'down'|'flat', good: boolean|null})
+function arrowFor(delta, kpiDirection) {
+  if (delta == null || Math.abs(delta) < 1e-9) return { direction: 'flat', good: null };
+  const up = delta > 0;
+  const good = kpiDirection === 'higher' ? up : !up;
+  return { direction: up ? 'up' : 'down', good };
+}
+
+/* ============================================================
    RENDER
    ============================================================ */
 function render() {
-  renderSummaryChips();
-  renderDeptSummary();
-  renderDepartments();
+  // Toggle which view is visible
+  const triageView = document.getElementById('triage-view');
+  const dashboardView = document.getElementById('dashboard-view');
+  const deptSummary = document.getElementById('dept-summary');
+  if (STATE.viewMode === 'dashboard') {
+    triageView.style.display = 'none';
+    dashboardView.style.display = 'block';
+    deptSummary.style.display = 'none';
+    renderDashboard();
+  } else {
+    triageView.style.display = 'block';
+    dashboardView.style.display = 'none';
+    renderSummaryChips();
+    renderDeptSummary();
+    renderDepartments();
+  }
+}
+
+/* ============================================================
+   DASHBOARD RENDERING (landing grid + department detail)
+   ============================================================ */
+function renderDashboard() {
+  const container = document.getElementById('dashboard-content');
+  if (!container) return;
+  if (STATE.dashboardDeptId) {
+    renderDashboardDetail(container);
+  } else {
+    renderDashboardLanding(container);
+  }
+}
+
+// Landing grid: all departments as cards showing status count chips
+function renderDashboardLanding(container) {
+  if (STATE.departments.length === 0) {
+    container.innerHTML = '<div class="empty">No departments loaded.</div>';
+    return;
+  }
+  const cards = STATE.departments.map(d => {
+    const kpis = d.sheets.flatMap(s => s.kpis);
+    const counts = {
+      green: kpis.filter(k => effectiveStatus(k) === 'green').length,
+      yellow: kpis.filter(k => effectiveStatus(k) === 'yellow').length,
+      red: kpis.filter(k => effectiveStatus(k) === 'red').length,
+      gray: kpis.filter(k => effectiveStatus(k) === 'gray').length,
+    };
+    const chips = ['red','yellow','green','gray']
+      .filter(s => counts[s] > 0)
+      .map(s => `<span class="dashboard-dept-card-chip ${s}">● ${counts[s]}</span>`).join('');
+    return `
+      <div class="dashboard-dept-card" data-dept-id="${escapeHTML(d.id)}">
+        <div class="dashboard-dept-card-name">${escapeHTML(d.name)}</div>
+        <div class="dashboard-dept-card-meta">${kpis.length} KPIs</div>
+        <div class="dashboard-dept-card-chips">${chips}</div>
+      </div>
+    `;
+  }).join('');
+  container.innerHTML = `
+    <div class="dashboard-breadcrumbs">
+      <span class="current">All departments (${STATE.departments.length})</span>
+    </div>
+    <div class="dashboard-grid">${cards}</div>
+  `;
+  // Wire up clicks
+  container.querySelectorAll('[data-dept-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      STATE.dashboardDeptId = el.dataset.deptId;
+      renderDashboard();
+    });
+  });
+}
+
+// Detail view: KPI cards for one department
+function renderDashboardDetail(container) {
+  const dept = STATE.departments.find(d => d.id === STATE.dashboardDeptId);
+  if (!dept) {
+    STATE.dashboardDeptId = null;
+    renderDashboard();
+    return;
+  }
+  const kpis = dept.sheets.flatMap(s => s.kpis);
+  const cardHTML = kpis.map(k => renderKpiCard(k)).join('');
+  container.innerHTML = `
+    <div class="dashboard-breadcrumbs">
+      <button data-action="back">← All departments</button>
+      <span class="separator">/</span>
+      <span class="current">${escapeHTML(dept.name)}</span>
+    </div>
+    <div class="dashboard-kpi-grid">${cardHTML}</div>
+  `;
+  container.querySelector('[data-action="back"]').addEventListener('click', () => {
+    STATE.dashboardDeptId = null;
+    renderDashboard();
+  });
+}
+
+function renderKpiCard(k) {
+  const eff = effectiveStatus(k);
+  const direction = inferKpiDirection(k);
+  const shape = inferKpiShape(k);
+
+  // Progress bar toward target (best-effort — parses first number out of target)
+  const curNum = Number(k.statusValue);
+  let progressPct = null;
+  const tgtMatch = String(k.target || '').match(/(-?\d+\.?\d*)/);
+  if (tgtMatch && !Number.isNaN(curNum) && k.statusValue != null) {
+    const tgtNum = parseFloat(tgtMatch[1]);
+    if (tgtNum > 0) {
+      // For "higher is better" targets, progress = current/target
+      // For "lower is better" targets, invert so 100% = at or under target
+      let pct = direction === 'lower'
+        ? Math.max(0, Math.min(150, (tgtNum / Math.max(0.001, Math.abs(curNum))) * 100))
+        : Math.max(0, Math.min(150, (curNum / tgtNum) * 100));
+      // Correct for percentage KPIs where target is decimal (0.9 = 90%)
+      if (k.isPercentage && tgtNum <= 1.5 && Math.abs(curNum) <= 1.5) {
+        pct = direction === 'lower' ? (tgtNum / Math.max(0.001, Math.abs(curNum))) * 100 : (curNum / tgtNum) * 100;
+        pct = Math.max(0, Math.min(150, pct));
+      }
+      progressPct = pct;
+    }
+  }
+  const progressBar = progressPct != null ? `
+    <div class="dashboard-progress">
+      <div class="dashboard-progress-fill ${eff}" style="width: ${Math.min(100, progressPct)}%"></div>
+    </div>
+    <div class="dashboard-progress-label">${progressPct.toFixed(0)}% of target</div>
+  ` : '';
+
+  // Year-over-year comparison
+  const yoy = computeYoY(k);
+  const yoyRow = yoy ? renderDeltaRow('vs PFY YTD', yoy.prior, yoy.delta, direction, k) : '';
+
+  // Month-over-month change
+  const mom = computeMoM(k);
+  const momLabel = shape === 'cumulative' ? `${monthDisplay(mom && mom.latestMonth)} contributed` : `${monthDisplay(mom && mom.latestMonth)} vs ${monthDisplay(mom && mom.previousMonth)}`;
+  let momRow = '';
+  if (mom) {
+    if (shape === 'cumulative') {
+      // For cumulative KPIs, "delta" IS what this month added — no arrow needed for the "change"
+      momRow = `
+        <div class="dashboard-delta-row">
+          <span class="delta-label">${escapeHTML(momLabel)}</span>
+          <span class="delta-value">${escapeHTML(formatKpiNumber(k, mom.delta))}</span>
+        </div>
+      `;
+    } else {
+      momRow = renderDeltaRow(momLabel, mom.previousValue, mom.delta, direction, k);
+    }
+  }
+
+  // Projected EOY
+  const proj = computeProjectedEOY(k);
+  const projRow = proj ? `
+    <div class="dashboard-projection">
+      <span class="proj-label">Projected EOY${proj.method === 'annualized' ? ` (${proj.monthsUsed}mo × 12)` : ''}</span>
+      <span class="proj-value">${escapeHTML(formatKpiNumber(k, proj.value))}</span>
+    </div>
+  ` : '';
+
+  // OT companion row (budget KPIs where an OT variant was merged into this KPI)
+  let otRow = '';
+  if (k.otFormattedValue && k.otFormattedValue !== '—' && k.otFormattedValue !== 'N/A') {
+    otRow = `
+      <div class="dashboard-ot-row">
+        <span class="ot-label">OT usage</span>
+        <span class="ot-value ${k.otStatus || 'gray'}">
+          <span class="ot-dot">●</span>
+          ${escapeHTML(k.otFormattedValue)}
+        </span>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="dashboard-kpi-card ${eff}">
+      <div class="dashboard-kpi-header">
+        <div class="dashboard-kpi-title">${escapeHTML(k.description || k.metric || 'Unnamed KPI')}</div>
+        ${k.link ? `<span class="dashboard-kpi-link">${escapeHTML(k.link)}</span>` : ''}
+      </div>
+      <div class="dashboard-kpi-primary">
+        <div>
+          <div class="label">Current YTD</div>
+          <div class="value">${escapeHTML(k.formattedValue || '—')}</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="label">Target</div>
+          <div class="target">${escapeHTML(k.formattedTarget || k.target || '—')}</div>
+        </div>
+      </div>
+      ${progressBar}
+      <div class="dashboard-kpi-deltas">
+        ${yoyRow}
+        ${momRow}
+      </div>
+      ${otRow}
+      ${projRow}
+    </div>
+  `;
+}
+
+function renderDeltaRow(label, referenceValue, delta, direction, kpi) {
+  const arrow = arrowFor(delta, direction);
+  const arrowChar = arrow.direction === 'up' ? '▲' : (arrow.direction === 'down' ? '▼' : '·');
+  const arrowClass = arrow.good === true ? 'good' : (arrow.good === false ? 'bad' : 'flat');
+  return `
+    <div class="dashboard-delta-row">
+      <span class="delta-label">${escapeHTML(label)}</span>
+      <span class="delta-value">
+        <span class="delta-arrow ${arrowClass}">${arrowChar}</span>
+        ${escapeHTML(formatKpiDelta(kpi, delta))}
+      </span>
+    </div>
+  `;
+}
+
+function monthDisplay(m) {
+  if (!m) return 'This month';
+  const proper = { OCT:'Oct',NOV:'Nov',DEC:'Dec',JAN:'Jan',FEB:'Feb',MAR:'Mar',APR:'Apr',MAY:'May',JUN:'Jun',JUL:'Jul',AUG:'Aug',SEP:'Sep' };
+  return proper[m] || m;
 }
 
 function renderSummaryChips() {
@@ -2408,7 +3111,7 @@ function renderDeptSummary() {
       e.stopPropagation();
       const deptId = btn.dataset.deptId;
       const dept = STATE.departments.find(d => d.id === deptId);
-      if (dept && confirm(`Remove "${dept.name}" from the builder? This will also clear any comments you've added to its KPIs.`)) {
+      if (dept && confirm(`Remove "${dept.name}" from the triage? This will also clear any comments you've added to its KPIs.`)) {
         STATE.departments = STATE.departments.filter(d => d.id !== deptId);
         if (STATE.departments.length === 0) {
           resetApp();
@@ -2694,15 +3397,16 @@ function updateSheetCounts() {
 function resetApp() {
   STATE.departments = [];
   STATE.filter = 'all';
+  STATE.viewMode = 'triage';
+  STATE.dashboardDeptId = null;
   document.getElementById('dept-name').textContent = '— No files loaded —';
   document.getElementById('upload-zone').style.display = 'block';
   document.getElementById('app').style.display = 'none';
   document.getElementById('dept-summary').style.display = 'none';
   fileInput.value = '';
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === 'all'));
+  document.querySelectorAll('#view-mode-toggle .view-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'triage'));
   clearSavedSession();
-  // Refresh folder-sync UI (still shows saved handle if one exists — reset only
-  // clears the current triage session, not the "which folder do I sync with" pref)
   refreshSyncedFolderUI();
 }
 
@@ -2714,6 +3418,20 @@ document.getElementById('btn-reset').addEventListener('click', () => {
 
 document.getElementById('btn-add-more').addEventListener('click', () => {
   fileInput.click();
+});
+
+// View-mode toggle (Triage ↔ Dashboard)
+document.querySelectorAll('#view-mode-toggle .view-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    if (STATE.viewMode === mode) return;
+    STATE.viewMode = mode;
+    STATE.dashboardDeptId = null; // reset drill-in state when switching modes
+    document.querySelectorAll('#view-mode-toggle .view-mode-btn')
+      .forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    render();
+    scheduleSave();
+  });
 });
 
 // Folder sync (File System Access API — Edge/Chrome only, hidden in Firefox/Safari)
@@ -3242,12 +3960,16 @@ function drawSignatureLines(pdf, dept, y) {
   document.getElementById('btn-restore-saved').addEventListener('click', () => {
     STATE.departments = saved.departments;
     STATE.filter = saved.filter || 'all';
+    STATE.viewMode = saved.viewMode || 'triage';
+    STATE.dashboardDeptId = saved.dashboardDeptId || null;
     banner.style.display = 'none';
     document.getElementById('upload-zone').style.display = 'none';
+    document.getElementById('folder-sync').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     updateHeaderDept();
     // Restore the active filter button visual state
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === STATE.filter));
+    document.querySelectorAll('#view-mode-toggle .view-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === STATE.viewMode));
     render();
     updateSavedIndicator();
   });
